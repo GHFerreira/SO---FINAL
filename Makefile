@@ -25,6 +25,9 @@ TARGET    := simulador
 COMMON_SRCS := \
     $(SRC_DIR)/so.cpp \
     $(SRC_DIR)/memory.cpp \
+    $(SRC_DIR)/memoria.cpp \
+    $(SRC_DIR)/mmu.cpp \
+    $(SRC_DIR)/pcb.cpp \
     $(CONTROL_DIR)/control_unit.cpp \
     $(CPU_DIR)/cpu.cpp \
     $(REG_DIR)/register_bank.cpp \
@@ -48,8 +51,10 @@ TEST_CPU_BIN     := $(BUILD_DIR)/test_cpu
 TEST_CONTROL_BIN := $(BUILD_DIR)/test_control_unit
 TEST_MEM_BIN     := $(BUILD_DIR)/test_memoria
 TEST_CPU_MEM_BIN := $(BUILD_DIR)/test_cpu_memoria
+TEST_MMU_BIN     := $(BUILD_DIR)/test_mmu
+TEST_PCB_BIN     := $(BUILD_DIR)/test_pcb
 
-.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria clean help
+.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb clean help
 
 # Target padrão
 all: $(TARGET)
@@ -114,6 +119,22 @@ $(TEST_CPU_MEM_BIN): $(BUILD_DIR)/tests/teste_cpu_memoria.o \
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
+$(TEST_MMU_BIN): $(BUILD_DIR)/tests/teste_mmu.o \
+                 $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                 $(BUILD_DIR)/$(SRC_DIR)/mmu.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+$(TEST_PCB_BIN): $(BUILD_DIR)/tests/teste_pcb.o \
+                 $(BUILD_DIR)/$(SRC_DIR)/pcb.o \
+                 $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
+                 $(BUILD_DIR)/$(REG_DIR)/register_table.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/parser.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/clock_core.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/metrics.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
 test_ula: $(TEST_ULA_BIN)
 	@echo ""
 	@echo "--- Executando Testes da ULA ---"
@@ -144,8 +165,18 @@ test_cpu_memoria: $(TEST_CPU_MEM_BIN)
 	@echo "--- Executando Testes CPU + Memoria ---"
 	@./$(TEST_CPU_MEM_BIN)
 
+test_mmu: $(TEST_MMU_BIN)
+	@echo ""
+	@echo "--- Executando Testes de Memoria e MMU ---"
+	@./$(TEST_MMU_BIN)
+
+test_pcb: $(TEST_PCB_BIN)
+	@echo ""
+	@echo "--- Executando Testes de PCB e Parser ---"
+	@./$(TEST_PCB_BIN)
+
 # Executa todos os testes
-test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria
+test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb
 	@echo ""
 	@echo "=========================================="
 	@echo "  TODOS OS TESTES PASSARAM COM SUCESSO!   "
@@ -173,5 +204,7 @@ help:
 	@echo "  make test_cpu       - Executa o teste de integração da CPU"
 	@echo "  make test_memoria   - Executa os testes unitários de Memória"
 	@echo "  make test_cpu_memoria - Executa os testes de integração CPU + Memória"
+	@echo "  make test_mmu         - Executa os testes da classe Memoria e MMU"
+	@echo "  make test_pcb         - Executa os testes do PCB e diretivas do Parser"
 	@echo "  make clean          - Remove os binários e diretório de build"
 	@echo "  make help           - Exibe esta mensagem de ajuda"

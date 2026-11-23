@@ -14,11 +14,14 @@ bool JobParser::carregarArquivo(const std::string& caminho, JobData& outJob) {
     }
 
     outJob.nomeArquivo = caminho;
+    outJob.prioridade = 0;
+    outJob.burst = 0;
     outJob.instrucoes.clear();
     outJob.variaveis.clear();
 
     std::string linha;
     bool inDataSection = false;
+    bool burstDefinido = false;
 
     while (std::getline(arquivo, linha)) {
         // Remove comentarios (tudo a partir de //)
@@ -42,6 +45,32 @@ bool JobParser::carregarArquivo(const std::string& caminho, JobData& outJob) {
         } else if (linha == ".text" || linha == ".TEXT") {
             inDataSection = false;
             continue;
+        }
+
+        // Diretivas opcionais de escalonamento (.priority N e .burst N)
+        if (linha[0] == '.') {
+            std::stringstream ssDiretiva(linha);
+            std::string diretiva;
+            ssDiretiva >> diretiva;
+
+            if (diretiva == ".priority" || diretiva == ".PRIORITY") {
+                int valorPrioridade = 0;
+                if (!(ssDiretiva >> valorPrioridade)) {
+                    std::cerr << "[JobParser] Valor invalido para .priority no arquivo " << caminho << ": " << linha << std::endl;
+                    return false;
+                }
+                outJob.prioridade = valorPrioridade;
+                continue;
+            } else if (diretiva == ".burst" || diretiva == ".BURST") {
+                long long valorBurst = 0;
+                if (!(ssDiretiva >> valorBurst) || valorBurst < 0) {
+                    std::cerr << "[JobParser] Valor invalido para .burst no arquivo " << caminho << ": " << linha << std::endl;
+                    return false;
+                }
+                outJob.burst = static_cast<uint32_t>(valorBurst);
+                burstDefinido = true;
+                continue;
+            }
         }
 
         if (!inDataSection) {
@@ -80,6 +109,11 @@ bool JobParser::carregarArquivo(const std::string& caminho, JobData& outJob) {
     }
     
     arquivo.close();
+
+    if (!burstDefinido) {
+        outJob.burst = static_cast<uint32_t>(outJob.instrucoes.size());
+    }
+
     return true;
 }
 

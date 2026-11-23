@@ -12,6 +12,8 @@
 struct JobData {
     int id;
     std::string nomeArquivo;
+    int prioridade = 0;
+    uint32_t burst = 0;
     std::vector<uint16_t> instrucoes;
     std::vector<std::pair<uint16_t, uint16_t>> variaveis; // {endereco_relativo, valor}
 };
