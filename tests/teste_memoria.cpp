@@ -1,75 +1,92 @@
-#include "../src/memory.hpp"
+#include "../src/memoria.hpp"
+#include "../loader/clock_core.hpp"
+#include "../loader/metrics.hpp"
+#include "../loader/parser.hpp"
 #include <cassert>
 #include <iostream>
-
-using namespace std;
+#include <vector>
 
 void testeLeituraEscrita() {
-    EscreverMemoria(600, 42);
-    assert(LerMemoria(600) == 42);
-    cout << "OK: leitura/escrita basica\n";
+    Memoria memoria(TAM_RAM);
+    memoria.escrever(600, 42);
+    assert(memoria.ler(600) == 42);
+    assert(memoria.getTotalAcessos() == 2);
+    std::cout << "OK: leitura, escrita e contagem de acessos\n";
 }
 
-void testeIncrementoDoClock() {
-    clockGlobal = 0;
-    LerMemoria(600);
-    EscreverMemoria(601, 1);
-    assert(clockGlobal == 2); // 1 ciclo por acesso
-    cout << "OK: clock incrementa corretamente\n";
+void testeMemoriaNaoAlteraRelogio() {
+    Memoria memoria(TAM_RAM);
+    ClockCore::reset();
+    memoria.escrever(600, 1);
+    memoria.ler(600);
+    assert(ClockCore::getCycles() == 0);
+    ClockCore::tickRAM();
+    ClockCore::tickRAM();
+    assert(ClockCore::getCycles() == 2);
+    std::cout << "OK: relogio unico contabiliza os ciclos de RAM\n";
 }
 
 void testeProtecaoLeitura() {
+    Memoria memoria(TAM_RAM);
     bool lancou = false;
     try {
-        LerMemoria(0);
-    } catch (exception&) {
+        memoria.ler(0);
+    } catch (const std::exception&) {
         lancou = true;
     }
     assert(lancou);
-    cout << "OK: protecao de leitura na area do SO\n";
+    std::cout << "OK: protecao de leitura na area do SO\n";
 }
 
 void testeProtecaoEscrita() {
+    Memoria memoria(TAM_RAM);
     bool lancou = false;
     try {
-        EscreverMemoria(511, 99);
-    } catch (exception&) {
+        memoria.escrever(511, 99);
+    } catch (const std::exception&) {
         lancou = true;
     }
     assert(lancou);
-    cout << "OK: protecao de escrita na area do SO\n";
+    std::cout << "OK: protecao de escrita na area do SO\n";
 }
 
 void testeEnderecoMaximo() {
-    EscreverMemoria(65535, 123);
-    assert(LerMemoria(65535) == 123);
-    cout << "OK: endereco maximo (65535) funciona\n";
+    Memoria memoria(TAM_RAM);
+    memoria.escrever(65535, 123);
+    assert(memoria.ler(65535) == 123);
+    std::cout << "OK: endereco maximo (65535) funciona\n";
 }
 
-void testeLerDisco() {
-    vector<uint16_t> disco = {10, 20, 30, 999};
-    clockGlobal = 0;
-    int idx = LerDisco(30, disco);
-    assert(idx == 2);
-    assert(clockGlobal == 150); // 50 ciclos x 3 posicoes percorridas (indices 0,1,2)
-    cout << "OK: LerDisco encontra o dado e cobra o clock certo\n";
+void testeLeituraDisco() {
+    const std::vector<uint16_t> disco = {10, 20, 30, 999};
+    ClockCore::reset();
+    MetricsTracker::iniciarJob(1, "teste_disco");
+    int ciclos = JobParser::lerDisco(30, disco);
+    assert(ciclos == 150);
+    assert(ClockCore::getCycles() == 150);
+    assert(MetricsTracker::obterMetricas().acessosDisco == 1);
+    std::cout << "OK: custo e telemetria do acesso a disco\n";
 }
 
-void testeLerDiscoNaoEncontrado() {
-    vector<uint16_t> disco = {10, 20, 30};
-    int idx = LerDisco(999, disco);
-    assert(idx == -1);
-    cout << "OK: LerDisco retorna -1 quando nao encontra\n";
+void testeLeituraDiscoSemEncontrar() {
+    const std::vector<uint16_t> disco = {10, 20, 30};
+    ClockCore::reset();
+    MetricsTracker::iniciarJob(2, "teste_disco_sem_resultado");
+    int ciclos = JobParser::lerDisco(999, disco);
+    assert(ciclos == 150);
+    assert(ClockCore::getCycles() == 150);
+    assert(MetricsTracker::obterMetricas().acessosDisco == 1);
+    std::cout << "OK: custo do disco quando o dado nao e encontrado\n";
 }
 
 int main() {
     testeLeituraEscrita();
-    testeIncrementoDoClock();
+    testeMemoriaNaoAlteraRelogio();
     testeProtecaoLeitura();
     testeProtecaoEscrita();
     testeEnderecoMaximo();
-    testeLerDisco();
-    testeLerDiscoNaoEncontrado();
-    cout << "Todos os testes de memoria passaram!\n";
+    testeLeituraDisco();
+    testeLeituraDiscoSemEncontrar();
+    std::cout << "Todos os testes de memoria passaram!\n";
     return 0;
 }

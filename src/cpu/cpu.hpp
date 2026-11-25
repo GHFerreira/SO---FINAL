@@ -4,7 +4,7 @@
 #include "registers/register_bank.hpp"
 #include "ula/ula.hpp"
 #include "control/control_unit.hpp"
-#include "../memory.hpp"
+#include "../mmu.hpp"
 #include "../defines.hpp"
 #include <cstdint>
 #include <iostream>
@@ -22,8 +22,7 @@
  * 2. Delegação do Ciclo de Instrução: a CPU não busca, decodifica nem executa
  *    instruções por conta própria — isso é responsabilidade exclusiva da UC.
  *    A CPU apenas aciona controlUnit.step(regBank, ula) a cada pulso de clock.
- * 3. Barramento de Memória: a leitura/escrita em RAM (LOAD/STORE) é feita
- *    pela UC através da interface mediadora LerMemoria/EscreverMemoria.
+ * 3. Barramento de Memória: a UC acessa memória por meio da MMU do processo.
  */
 class CPU {
 private:
@@ -32,7 +31,7 @@ private:
     ControlUnit controlUnit;  ///< Unidade de Controle: orquestra Fetch -> Decode -> Execute
 
 public:
-    CPU();
+    CPU(MMU &mmu, int pid);
 
     /** Reinicia a CPU (zera registradores, aponta PC para a área inicial do job e limpa o HALT da UC) */
     void reset();
@@ -49,7 +48,7 @@ public:
      * Unidade de Controle, fornecendo a ela o RegisterBank e a ULA.
      * @throws std::runtime_error se a UC encontrar um opcode desconhecido.
      */
-    void step();
+    ResultadoPasso step();
 
     /** Exibe o estado atual da CPU (PC, IR e registradores) em qualquer stream */
     void imprimirEstado(std::ostream& out = std::cout) const;

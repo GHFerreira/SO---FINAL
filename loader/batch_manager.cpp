@@ -9,7 +9,8 @@
 
 #include "../src/cpu/cpu.hpp"
 #include "../src/defines.hpp"
-#include "../src/memory.hpp"
+#include "../src/memoria.hpp"
+#include "../src/mmu.hpp"
 
 #include <cstddef>
 #include <exception>
@@ -19,7 +20,7 @@
  * BatchManager - Gerenciador do ciclo de vida em lote
  *
  * Percorre a fila de jobs executando cada um de forma isolada. A cada job o
- * contexto da máquina é reiniciado (PC = 512, registradores zerados, clock do
+ * contexto da máquina é reiniciado (PC lógico = 0, registradores zerados, clock do
  * job zerado), de modo que nenhum resíduo do job anterior influencie o próximo.
  *
  * Princípio do processamento em lote: a falha de um job não derruba o lote.
@@ -42,7 +43,8 @@ const uint32_t LIMITE_INSTRUCOES_POR_JOB = 1000000;
 } // namespace
 
 void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJobs) {
-    CPU cpu;
+    Memoria memoria(TAM_RAM);
+    MMUBaseLimite mmu(memoria);
 
     std::cout << "===================================================" << std::endl;
     std::cout << "[SIMULADOR RISC 16-BITS] - EXECUCAO EM LOTE" << std::endl;
@@ -69,16 +71,16 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
 
         // --- 2. Reset de contexto e Telemetria de Disco -------------------
         // Zera o clock do job, abre a telemetria e devolve a CPU ao estado
-        // inicial. O PC é posicionado explicitamente na primeira instrução do
-        // job (endereço base 512, logo após a área reservada do SO).
+        // inicial. O PC aponta para o início lógico do job.
         ClockCore::reset();
         MetricsTracker::iniciarJob(job.id, job.nomeArquivo);
-        clockGlobal = 0;
-        acessosMemoria = 0;
-        acessosDisco = 0;
-        instExecutadas = 0;
+        memoria.limpar();
+        mmu.limparProcessos();
+        mmu.registrarProcesso(job.id, OS_RESERVED_MEM,
+                              static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
+        CPU cpu(mmu, job.id);
         cpu.reset();
-        cpu.setPC(OS_RESERVED_MEM);
+        cpu.setPC(0);
 
         // O carregamento do Job a partir do Disco Virtual para a RAM gera 1 acesso
         // a disco (I/O) com penalidade inicial de 50 ciclos de relógio
@@ -86,7 +88,7 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
         MetricsTracker::registrarAcessoDisco();
 
         // --- 3. Carga das instruções e variáveis na RAM (RAMLoader) --------
-        const bool cargaConcluida = RAMLoader::carregarNaRAM(job, RAM, TAM_RAM);
+        const bool cargaConcluida = RAMLoader::carregarNaRAM(job, memoria);
         if (!cargaConcluida) {
             std::cout << "[LOTE] Falha ao carregar o job " << job.id
                       << " na RAM (job abortado)" << std::endl;
@@ -106,11 +108,15 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
                         break;
                     }
 
-                    cpu.step();
+                    ResultadoPasso resultado = cpu.step();
 
-                    // A instrução só é contabilizada após concluir sem interrupção.
-                    MetricsTracker::registrarInstrucao();
-                    ++instrucoesDoJob;
+                    if (resultado.instrucaoExecutada) {
+                        MetricsTracker::registrarInstrucao();
+                        ++instrucoesDoJob;
+                    }
+                    if (resultado.ciclosStall > 0) {
+                        ClockCore::adicionarCiclos(resultado.ciclosStall);
+                    }
                 }
 
                 if (cpu.isHalted()) {
@@ -124,12 +130,10 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
                 MetricsTracker::marcarErroKernel();
             }
 
-            // Sincronização defensiva: caso o módulo de memória de outro grupo
-            // tenha incrementado as variáveis globais de memory.hpp diretamente,
-            // garantimos que o ClockCore e a telemetria reflitam esses acessos:
-            if (acessosMemoria > 0 && MetricsTracker::obterMetricas().acessosRAM == 0) {
-                MetricsTracker::registrarAcessoRAM(static_cast<uint32_t>(acessosMemoria));
-                for (int a = 0; a < acessosMemoria; ++a) {
+            const uint32_t acessosRAM = memoria.getTotalAcessos();
+            if (acessosRAM > 0) {
+                MetricsTracker::registrarAcessoRAM(acessosRAM);
+                for (uint32_t a = 0; a < acessosRAM; ++a) {
                     ClockCore::tickRAM();
                 }
             }

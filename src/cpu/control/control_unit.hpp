@@ -2,9 +2,16 @@
 #define CONTROL_UNIT_HPP
 
 #include "../../defines.hpp"
+#include "../../mmu.hpp"
 #include "../registers/register_bank.hpp"
 #include "../ula/ula.hpp"
 #include <cstdint>
+
+struct ResultadoPasso {
+  bool instrucaoExecutada = false;
+  bool faltaPagina = false;
+  uint32_t ciclosStall = 0;
+};
 
 /**
 Layout de bits adotado
@@ -30,7 +37,7 @@ struct InstrucaoDecodificada {
  * ============================================================================
  * O "maestro" da CPU. Não realiza cálculos nem armazena dados por conta
  * própria: a UC apenas orquestra o ciclo de instrução, comandando o
- * RegisterBank, a ULA e a Interface de Memória (LerMemoria/EscreverMemoria).
+ * RegisterBank, a ULA e a MMU do processo corrente.
  *
  * Responsabilidades (conforme especificação da Prática 0):
  * 1. BUSCA (Fetch)         - Lê a instrução apontada pelo PC na RAM e
@@ -45,14 +52,23 @@ struct InstrucaoDecodificada {
  *
  * Fronteiras respeitadas:
  * - A UC nunca acessa o vetor RAM diretamente; toda transferência passa
- *   pelas funções mediadoras LerMemoria/EscreverMemoria.
+ *   pela MMU usando endereços lógicos.
  * - A UC não realiza contas por conta própria; toda aritmética/lógica é
  *   delegada à ULA. A UC apenas decide QUANDO e COM QUAIS operandos a
  *   ULA deve ser acionada, e o que fazer com o resultado.
  */
 class ControlUnit {
 private:
+  MMU &mmu;
+  int pid;
   bool haltStatus; ///< Flag de parada: true quando um HALT foi processado
+
+  uint16_t lerMemoria(uint16_t enderecoLogico, ResultadoPasso &resultado);
+  void escreverMemoria(uint16_t enderecoLogico, uint16_t dado,
+                       ResultadoPasso &resultado);
+  uint16_t buscar(RegisterBank &regBank, ResultadoPasso &resultado);
+  void executar(const InstrucaoDecodificada &instr, RegisterBank &regBank,
+                ULA &ula, ResultadoPasso &resultado);
 
   /**
    * @brief Despacha uma operação puramente computacional (ADD/SUB/AND/OR)
@@ -63,7 +79,7 @@ private:
                    uint16_t regDest, uint16_t regF1, uint16_t regF2);
 
 public:
-  ControlUnit();
+  ControlUnit(MMU &mmu, int pid);
 
   /** Reinicia a Unidade de Controle (limpa a flag de HALT). */
   void reset();
@@ -77,8 +93,6 @@ public:
    * Memória, grava-a no Instruction Register (IR) e incrementa o PC.
    * @return A instrução (IR) recém buscada.
    */
-  uint16_t fetch(RegisterBank &regBank);
-
   /**
    * @brief Etapa de DECODIFICAÇÃO (Decode).
    * Isola opcode e operandos da instrução via mascaramento de bits.
@@ -93,14 +107,11 @@ public:
    * Interface de Memória para efetivar a ação da instrução.
    * @throws std::runtime_error se o opcode for desconhecido.
    */
-  void execute(const InstrucaoDecodificada &instr, RegisterBank &regBank,
-               ULA &ula);
-
   /**
    * @brief Executa um ciclo de instrução completo (Fetch -> Decode -> Execute).
    * Não faz nada se a UC já estiver em estado HALT.
    */
-  void step(RegisterBank &regBank, ULA &ula);
+  ResultadoPasso step(RegisterBank &regBank, ULA &ula);
 };
 
 #endif // CONTROL_UNIT_HPP

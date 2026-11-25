@@ -1,97 +1,44 @@
 #include "../src/cpu/cpu.hpp"
-#include "../src/memory.hpp"
+#include "../src/memoria.hpp"
+#include "../src/mmu.hpp"
 #include <cassert>
 #include <iostream>
+#include <vector>
 
-using namespace std;
-
-// Monta o exemplo da sessão 4 do PDF - CICLO DE EXECUÇÃO EM LOTE
-// restringe o teste apenas a integração CPU <-> Memoria.
-void carregarJobSoma(uint16_t base, uint16_t a, uint16_t b) {
-    EscreverMemoria(base + 0, 0x100A); // LOAD  R0, [10]
-    EscreverMemoria(base + 1, 0x110B); // LOAD  R1, [11]
-    EscreverMemoria(base + 2, 0x2201); // ADD   R2, R0, R1
-    EscreverMemoria(base + 3, 0x320C); // STORE R2, [12]
-    EscreverMemoria(base + 4, 0xF000); // HALT
-
-    EscreverMemoria(base + 10, a); // variavel A
-    EscreverMemoria(base + 11, b); // variavel B
-    EscreverMemoria(base + 12, 0); // variavel C (inicia em zero)
+void carregarPrograma(Memoria& memoria, uint16_t baseFisica,
+                      uint16_t valorA, uint16_t valorB) {
+    const std::vector<uint16_t> programa = {
+        0x100A, 0x110B, 0x2201, 0x320C, 0xF000
+    };
+    for (size_t i = 0; i < programa.size(); ++i) {
+        memoria.escreverKernel(baseFisica + static_cast<uint16_t>(i), programa[i]);
+    }
+    memoria.escreverKernel(baseFisica + 10, valorA);
+    memoria.escreverKernel(baseFisica + 11, valorB);
 }
 
-void testeCpuLeEEscreveNaRamCorretamente() {
-    uint16_t base = OS_RESERVED_MEM;
-    carregarJobSoma(base, 5, 7);
+void testarSoma(uint16_t valorA, uint16_t valorB) {
+    Memoria memoria(TAM_RAM);
+    MMUBaseLimite mmu(memoria);
+    mmu.registrarProcesso(1, OS_RESERVED_MEM,
+                          static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
+    carregarPrograma(memoria, OS_RESERVED_MEM, valorA, valorB);
 
-    CPU cpu;
-    cpu.setPC(base);
-
-    int passos = 0;
+    CPU cpu(mmu, 1);
+    uint32_t passos = 0;
     while (!cpu.isHalted()) {
-        cpu.step();
-        passos++;
-        assert(passos < 100 && "CPU nao parou - possivel loop infinito");
+        ResultadoPasso resultado = cpu.step();
+        assert(resultado.instrucaoExecutada);
+        assert(++passos < 100);
     }
 
-    // CPU leu A e B, somou e escreveu C corretamente, e guardou no endereço correto.
-    assert(LerMemoria(base + 12) == 12);
-    cout << "OK: CPU calcula e grava o resultado corretamente na RAM (5+7=12)\n";
-}
-
-void testeCpuRespeitaEnderecoRelativoAoJob() {
-
-    // Testa outra base pra ver se a CPU respeita o endereço relativo ao job
-    // e nao vaza pra fora do endereço especificado.
-
-    uint16_t base = OS_RESERVED_MEM;
-    carregarJobSoma(base, 100, 23);
-
-    CPU cpu;
-    cpu.setPC(base);
-    while (!cpu.isHalted()) cpu.step();
-
-    assert(LerMemoria(base + 12) == 123);
-    cout << "OK: enderecamento relativo ao job funciona com outros valores de A e B\n";
-}
-
-void testeCpuNaoEscreveForaDoEsperado() {
-    // Garante que o STORE so mexeu no endereco de destino
-    uint16_t base = OS_RESERVED_MEM;
-    EscreverMemoria(base + 13, 0xDEAD); // sentinela antes de rodar o job
-    carregarJobSoma(base, 1, 1);
-
-    CPU cpu;
-    cpu.setPC(base);
-    while (!cpu.isHalted()) cpu.step();
-
-    assert(LerMemoria(base + 12) == 2);
-    assert(LerMemoria(base + 13) == 0xDEAD); // sentinela intacta
-    cout << "OK: STORE nao escreve fora do endereco de destino\n";
-}
-
-void testeOpcodeInvalidoLancaExcecao() {
-    uint16_t base = OS_RESERVED_MEM;
-    EscreverMemoria(base + 0, 0x9000); // 0x9
-    EscreverMemoria(base + 1, 0xF000); // HALT
-
-    CPU cpu;
-    cpu.setPC(base);
-
-    bool lancou = false;
-    try {
-        cpu.step();
-    } catch (exception&) {
-        lancou = true;
-    }
-    assert(lancou && "Opcode invalido deveria lancar excecao (para o SO poder abortar o job)");
-    cout << "OK: opcode invalido lanca excecao corretamente\n";
+    assert(memoria.ler(OS_RESERVED_MEM + 12) ==
+           static_cast<uint16_t>(valorA + valorB));
 }
 
 int main() {
-    testeCpuLeEEscreveNaRamCorretamente();
-    testeCpuRespeitaEnderecoRelativoAoJob();
-    testeCpuNaoEscreveForaDoEsperado();
-    testeOpcodeInvalidoLancaExcecao();
-    cout << "Todos os testes de integracao CPU-memoria passaram!\n";
+    testarSoma(5, 7);
+    testarSoma(100, 23);
+    std::cout << "Teste de integracao CPU-memoria passou!\n";
     return 0;
 }

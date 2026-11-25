@@ -2,12 +2,16 @@
 #define SO_HPP
 
 #include "cpu/cpu.hpp"
+#include "memoria.hpp"
+#include "mmu.hpp"
 #include <vector>
 #include <string>
 #include <cstdint>
 
 class SistemaOperacional {
 private:
+    Memoria memoria;
+    MMUBaseLimite mmu;
     CPU cpu;
 
     /**
@@ -19,6 +23,7 @@ private:
                      const std::vector<uint16_t>& dadosIniciais);
 
 public:
+    SistemaOperacional();
     /**
      * executarJob - Executa um job em modo batch (bare-metal)
      * @param idJob   Identificador do job
@@ -32,4 +37,4 @@ public:
                      const std::vector<uint16_t>& dados);
 };
 
-#endif 
+#endif

@@ -4,13 +4,13 @@
 // ----------------------------------------------------------------------------
 // Construtor e Controle Básico da CPU
 // ----------------------------------------------------------------------------
-CPU::CPU() {
+CPU::CPU(MMU &mmu, int pid) : controlUnit(mmu, pid) {
     reset();
 }
 
 void CPU::reset() {
     regBank.reset();
-    regBank.setPC(OS_RESERVED_MEM); // Inicia apontando para o início da área do job na RAM
+    regBank.setPC(0);                // O PC usa o endereço lógico do processo
     controlUnit.reset();            // Limpa a flag de HALT da UC
 }
 
@@ -51,12 +51,12 @@ const ControlUnit& CPU::getControlUnit() const {
 // ----------------------------------------------------------------------------
 // A CPU não implementa mais o ciclo de instrução por conta própria: ela
 // apenas repassa suas duas dependências internas (regBank e ula) para a
-// Unidade de Controle, que é quem efetivamente busca a instrução na RAM
-// (via LerMemoria), atualiza PC/IR, decodifica os campos por mascaramento
+// Unidade de Controle, que busca a instrução via MMU, atualiza PC/IR,
+// decodifica os campos por mascaramento
 // de bits e executa a operação (aritmética/lógica via ULA, LOAD/STORE via
 // interface de memória, ou desvio de fluxo/HALT diretamente sobre o PC).
-void CPU::step() {
-    controlUnit.step(regBank, ula);
+ResultadoPasso CPU::step() {
+    return controlUnit.step(regBank, ula);
 }
 
 // ----------------------------------------------------------------------------

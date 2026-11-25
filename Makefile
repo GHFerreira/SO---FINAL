@@ -24,7 +24,6 @@ TARGET    := simulador
 # Fontes dos módulos (excluindo main.cpp)
 COMMON_SRCS := \
     $(SRC_DIR)/so.cpp \
-    $(SRC_DIR)/memory.cpp \
     $(SRC_DIR)/memoria.cpp \
     $(SRC_DIR)/mmu.cpp \
     $(SRC_DIR)/pcb.cpp \
@@ -99,18 +98,24 @@ $(TEST_CPU_BIN): $(BUILD_DIR)/$(TESTS_DIR)/test_cpu_integration.o $(COMMON_OBJS)
 
 $(TEST_CONTROL_BIN): $(BUILD_DIR)/$(TESTS_DIR)/test_control_unit.o \
                       $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
-                      $(BUILD_DIR)/$(SRC_DIR)/memory.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
                       $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
                       $(BUILD_DIR)/$(ULA_DIR)/ula.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(TEST_MEM_BIN): $(BUILD_DIR)/tests/teste_memoria.o $(BUILD_DIR)/$(SRC_DIR)/memory.o
+$(TEST_MEM_BIN): $(BUILD_DIR)/tests/teste_memoria.o \
+                 $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/parser.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/clock_core.o \
+                 $(BUILD_DIR)/$(LOADER_DIR)/metrics.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 $(TEST_CPU_MEM_BIN): $(BUILD_DIR)/tests/teste_cpu_memoria.o \
-                      $(BUILD_DIR)/$(SRC_DIR)/memory.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
                       $(BUILD_DIR)/$(CPU_DIR)/cpu.o \
                       $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
                       $(BUILD_DIR)/$(REG_DIR)/register_bank.o \

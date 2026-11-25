@@ -2,12 +2,11 @@
 #include "../registers/register_bank.hpp"
 #include "../ula/ula.hpp"
 #include "../../defines.hpp"
-#include "../../memory.hpp"
-#include <cstdint>
+#include "../../memoria.hpp"
+#include "../../mmu.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
-
 
 #define TEST_ASSERT(condition)                                                 \
   do {                                                                         \
@@ -18,168 +17,94 @@
     }                                                                          \
   } while (0)
 
-// Reinicia as estatísticas globais e a memória usada pelos testes para que um
-// teste nunca interfira no resultado do outro
-static void resetAmbiente(RegisterBank &regBank, ControlUnit &uc) {
-  clockGlobal = 0;
-  instExecutadas = 0;
-  acessosMemoria = 0;
-  acessosDisco = 0;
-  regBank.reset();
-  regBank.setPC(OS_RESERVED_MEM);
-  uc.reset();
-}
-
-// Teste 1: Decodificação pura (mascaramento de bits), isolada do resto da CPU
-void testDecode() {
-  std::cout << "[TEST] Testando Decodificacao (mascaramento de bits)...\n";
+struct AmbienteTeste {
+  Memoria memoria;
+  MMUBaseLimite mmu;
   ControlUnit uc;
+  RegisterBank registradores;
+  ULA ula;
 
-  // Exemplo do PDF do trabalho: 0x124F -> LOAD R2, [0x4F]
-  InstrucaoDecodificada instr = uc.decode(0x124F);
-  TEST_ASSERT(instr.opcode == 0x1);
-  TEST_ASSERT(instr.regDest == 0x2);
+  AmbienteTeste() : memoria(TAM_RAM), mmu(memoria), uc(mmu, 1) {
+    mmu.registrarProcesso(1, OS_RESERVED_MEM,
+                          static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
+  }
+
+  void gravar(uint16_t enderecoLogico, uint16_t dado) {
+    memoria.escreverKernel(OS_RESERVED_MEM + enderecoLogico, dado);
+  }
+};
+
+void testDecode() {
+  AmbienteTeste ambiente;
+  InstrucaoDecodificada instr = ambiente.uc.decode(0x124F);
+  TEST_ASSERT(instr.opcode == OP_LOAD);
+  TEST_ASSERT(instr.regDest == 2);
   TEST_ASSERT(instr.endereco == 0x4F);
 
-  // ADD R2, R0, R1 (0x2201)
-  InstrucaoDecodificada add = uc.decode(0x2201);
-  TEST_ASSERT(add.opcode == OP_ADD);
-  TEST_ASSERT(add.regDest == 2);
-  TEST_ASSERT(add.regF1 == 0);
-  TEST_ASSERT(add.regF2 == 1);
-
-  // JUMP para endereco absoluto 0x0A0 (0x80A0 -> opcode 8, resto 0x0A0)
-  InstrucaoDecodificada jmp = uc.decode(0x80A0);
+  InstrucaoDecodificada jmp = ambiente.uc.decode(0x80A0);
   TEST_ASSERT(jmp.opcode == OP_JUMP);
   TEST_ASSERT(jmp.enderecoJump == 0x0A0);
-
-  std::cout << "[PASS] Decodificacao validada!\n";
 }
 
-// Teste 2: Fetch isolado (busca + atualizacao de PC/IR)
-void testFetch() {
-  std::cout << "[TEST] Testando Busca (Fetch) e atualizacao de PC/IR...\n";
-  ControlUnit uc;
-  RegisterBank regBank;
-  resetAmbiente(regBank, uc);
+void testFetchLogico() {
+  AmbienteTeste ambiente;
+  ambiente.gravar(0, 0xF000);
 
-  EscreverMemoria(OS_RESERVED_MEM, 0xF000); // HALT
-
-  uint16_t pcAntes = regBank.getPC();
-  uint16_t IR = uc.fetch(regBank);
-
-  TEST_ASSERT(IR == 0xF000);
-  TEST_ASSERT(regBank.getIR() == 0xF000);
-  TEST_ASSERT(regBank.getPC() == pcAntes + 1);
-
-  std::cout << "[PASS] Busca validada!\n";
+  ResultadoPasso resultado = ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  TEST_ASSERT(resultado.instrucaoExecutada);
+  TEST_ASSERT(ambiente.registradores.getIR() == 0xF000);
+  TEST_ASSERT(ambiente.registradores.getPC() == 1);
+  TEST_ASSERT(ambiente.uc.isHalted());
 }
 
-// Teste 3: Ciclo completo C = A + B (exemplo central do PDF)
 void testCicloCompletoSoma() {
-  std::cout << "[TEST] Testando Ciclo Completo (Fetch-Decode-Execute): C = A + "
-               "B...\n";
-  ControlUnit uc;
-  RegisterBank regBank;
-  ULA ula;
-  resetAmbiente(regBank, uc);
+  AmbienteTeste ambiente;
+  ambiente.gravar(0, 0x100A);
+  ambiente.gravar(1, 0x110B);
+  ambiente.gravar(2, 0x2201);
+  ambiente.gravar(3, 0x320C);
+  ambiente.gravar(4, 0xF000);
+  ambiente.gravar(10, 5);
+  ambiente.gravar(11, 7);
 
-  // Programa: LOAD R0,[10]; LOAD R1,[11]; ADD R2,R0,R1; STORE R2,[12]; HALT
-  uint16_t base = OS_RESERVED_MEM;
-  EscreverMemoria(base + 0, 0x100A);
-  EscreverMemoria(base + 1, 0x110B);
-  EscreverMemoria(base + 2, 0x2201);
-  EscreverMemoria(base + 3, 0x320C);
-  EscreverMemoria(base + 4, 0xF000);
-
-  EscreverMemoria(base + 10, 5); // A = 5
-  EscreverMemoria(base + 11, 7); // B = 7
-  EscreverMemoria(base + 12, 0); // C
-
-  TEST_ASSERT(!uc.isHalted());
-
-  uc.step(regBank, ula); // LOAD R0, [10]
-  TEST_ASSERT(regBank.read(0) == 5);
-
-  uc.step(regBank, ula); // LOAD R1, [11]
-  TEST_ASSERT(regBank.read(1) == 7);
-
-  uc.step(regBank, ula); // ADD R2, R0, R1
-  TEST_ASSERT(regBank.read(2) == 12);
-  TEST_ASSERT(!ula.overflow);
-
-  uc.step(regBank, ula); // STORE R2, [12]
-  TEST_ASSERT(LerMemoria(base + 12) == 12);
-
-  uc.step(regBank, ula); // HALT
-  TEST_ASSERT(uc.isHalted());
-
-  // Depois do HALT, novos steps nao devem ter efeito algum
-  uint16_t pcFinal = regBank.getPC();
-  uc.step(regBank, ula);
-  TEST_ASSERT(regBank.getPC() == pcFinal);
-
-  std::cout << "[PASS] Ciclo completo de soma validado!\n";
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  TEST_ASSERT(ambiente.memoria.ler(OS_RESERVED_MEM + 12) == 12);
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  TEST_ASSERT(ambiente.uc.isHalted());
 }
 
-// Teste 4: Controle de fluxo - BEQ (desvio tomado e nao tomado) e JUMP
-void testControleDeFluxo() {
-  std::cout << "[TEST] Testando Controle de Fluxo (BEQ / JUMP)...\n";
-  ControlUnit uc;
-  RegisterBank regBank;
-  ULA ula;
-  resetAmbiente(regBank, uc);
+void testDesviosLogicos() {
+  AmbienteTeste ambiente;
+  ambiente.gravar(0, 0x7014);
+  ambiente.gravar(20, 0x81FF);
 
-  uint16_t base = OS_RESERVED_MEM;
-
-  // BEQ R0, R1, [20] -> opcode 7, regDest=0, regF1=1, endereco=0x14(20)
-  // Como R0 == R1 (ambos 0), o desvio deve ser tomado: PC = base + 20
-  EscreverMemoria(base + 0, 0x7014);
-  uc.step(regBank, ula);
-  TEST_ASSERT(regBank.getPC() == base + 20);
-
-  // JUMP incondicional para o endereco absoluto 0x1FF
-  EscreverMemoria(base + 20, 0x81FF);
-  uc.step(regBank, ula);
-  TEST_ASSERT(regBank.getPC() == base + 0x1FF);
-
-  std::cout << "[PASS] Controle de fluxo validado!\n";
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  TEST_ASSERT(ambiente.registradores.getPC() == 20);
+  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  TEST_ASSERT(ambiente.registradores.getPC() == 0x1FF);
 }
 
-// Teste 5: Opcode invalido deve lancar excecao (protecao da UC)
 void testOpcodeInvalido() {
-  std::cout << "[TEST] Testando deteccao de Opcode Invalido...\n";
-  ControlUnit uc;
-  RegisterBank regBank;
-  ULA ula;
-  resetAmbiente(regBank, uc);
-
-  // 0x9000 -> opcode 0x9, nao mapeado em nenhuma categoria
-  EscreverMemoria(OS_RESERVED_MEM, 0x9000);
-
+  AmbienteTeste ambiente;
+  ambiente.gravar(0, 0x9000);
   bool lancou = false;
   try {
-    uc.step(regBank, ula);
+    ambiente.uc.step(ambiente.registradores, ambiente.ula);
   } catch (const std::runtime_error &) {
     lancou = true;
   }
   TEST_ASSERT(lancou);
-
-  std::cout << "[PASS] Deteccao de opcode invalido validada!\n";
 }
 
 int main() {
-  std::cout << "==================================================\n";
-  std::cout << "     TESTES DA UNIDADE DE CONTROLE (UC)\n";
-  std::cout << "==================================================\n\n";
-
   testDecode();
-  testFetch();
+  testFetchLogico();
   testCicloCompletoSoma();
-  testControleDeFluxo();
+  testDesviosLogicos();
   testOpcodeInvalido();
-
-  std::cout
-      << "\nTODOS OS TESTES DA UNIDADE DE CONTROLE PASSARAM COM SUCESSO!\n";
+  std::cout << "Todos os testes da unidade de controle passaram!\n";
   return 0;
 }

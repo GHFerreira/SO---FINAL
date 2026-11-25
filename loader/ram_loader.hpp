@@ -2,6 +2,8 @@
 #define RAM_LOADER_HPP
 
 #include "clock_types.hpp"
+#include "../src/defines.hpp"
+#include "../src/memoria.hpp"
 #include <cstdint>
 
 /**
@@ -10,8 +12,8 @@
  */
 class RAMLoader {
 public:
-    // Carrega o JobData na RAM física a partir do endereço base (OS_RESERVED_MEM = 512)
-    static bool carregarNaRAM(const JobData& job, uint16_t* ram, uint32_t tamRam = 65536);
+    static bool carregarNaRAM(const JobData& job, Memoria& memoria,
+                              uint16_t baseFisica = OS_RESERVED_MEM);
 };
 
 #endif // RAM_LOADER_HPP
