@@ -9,7 +9,7 @@ struct FaltaPagina {};
 // ----------------------------------------------------------------------------
 // Construtor e Controle Básico
 // ----------------------------------------------------------------------------
-ControlUnit::ControlUnit(MMU &mmu, int pid) : mmu(mmu), pid(pid), haltStatus(false) {}
+ControlUnit::ControlUnit(MMU &mmu) : mmu(mmu), haltStatus(false) {}
 
 void ControlUnit::reset() { haltStatus = false; }
 
@@ -18,7 +18,7 @@ bool ControlUnit::isHalted() const { return haltStatus; }
 // ----------------------------------------------------------------------------
 // Etapa 1: BUSCA (Fetch)
 // ----------------------------------------------------------------------------
-uint16_t ControlUnit::lerMemoria(uint16_t enderecoLogico,
+uint16_t ControlUnit::lerMemoria(int pid, uint16_t enderecoLogico,
                                  ResultadoPasso &resultado) {
   ResultadoAcesso acesso;
   uint16_t dado = mmu.ler(pid, enderecoLogico, &acesso);
@@ -27,10 +27,12 @@ uint16_t ControlUnit::lerMemoria(uint16_t enderecoLogico,
     resultado.ciclosStall += acesso.ciclosStall;
     throw FaltaPagina{};
   }
+  ++resultado.acessosRAM;
   return dado;
 }
 
-void ControlUnit::escreverMemoria(uint16_t enderecoLogico, uint16_t dado,
+void ControlUnit::escreverMemoria(int pid, uint16_t enderecoLogico,
+                                  uint16_t dado,
                                   ResultadoPasso &resultado) {
   ResultadoAcesso acesso;
   mmu.escrever(pid, enderecoLogico, dado, &acesso);
@@ -39,11 +41,13 @@ void ControlUnit::escreverMemoria(uint16_t enderecoLogico, uint16_t dado,
     resultado.ciclosStall += acesso.ciclosStall;
     throw FaltaPagina{};
   }
+  ++resultado.acessosRAM;
 }
 
-uint16_t ControlUnit::buscar(RegisterBank &regBank, ResultadoPasso &resultado) {
+uint16_t ControlUnit::buscar(RegisterBank &regBank, int pid,
+                             ResultadoPasso &resultado) {
   uint16_t pc = regBank.getPC();
-  uint16_t IR = lerMemoria(pc, resultado);
+  uint16_t IR = lerMemoria(pid, pc, resultado);
 
   regBank.setIR(IR);
   regBank.incrementPC(); // Avança o PC para a próxima palavra
@@ -94,17 +98,17 @@ void ControlUnit::dispararULA(RegisterBank &regBank, ULA &ula, uint16_t opcode,
 // Etapa 3: EXECUÇÃO (Execute)
 // ----------------------------------------------------------------------------
 void ControlUnit::executar(const InstrucaoDecodificada &instr,
-                           RegisterBank &regBank, ULA &ula,
+                           RegisterBank &regBank, int pid, ULA &ula,
                            ResultadoPasso &resultado) {
   switch (instr.opcode) {
 
   // --- Transferência de Memória (Paradigma Load/Store) ---
   case OP_LOAD:
-    regBank.write(instr.regDest, lerMemoria(instr.endereco, resultado));
+    regBank.write(instr.regDest, lerMemoria(pid, instr.endereco, resultado));
     break;
 
   case OP_STORE:
-    escreverMemoria(instr.endereco, regBank.read(instr.regDest), resultado);
+    escreverMemoria(pid, instr.endereco, regBank.read(instr.regDest), resultado);
     break;
 
   // --- Aritmética e Lógica (delegadas integralmente à ULA) ---
@@ -151,16 +155,16 @@ void ControlUnit::executar(const InstrucaoDecodificada &instr,
 // ----------------------------------------------------------------------------
 // Ciclo Completo de Instrução (Fetch -> Decode -> Execute)
 // ----------------------------------------------------------------------------
-ResultadoPasso ControlUnit::step(RegisterBank &regBank, ULA &ula) {
+ResultadoPasso ControlUnit::step(int pid, RegisterBank &regBank, ULA &ula) {
   ResultadoPasso resultado;
   if (haltStatus)
     return resultado;
 
   const uint16_t pcInicial = regBank.getPC();
   try {
-    uint16_t IR = buscar(regBank, resultado);
+    uint16_t IR = buscar(regBank, pid, resultado);
     InstrucaoDecodificada instr = decode(IR);
-    executar(instr, regBank, ula, resultado);
+    executar(instr, regBank, pid, ula, resultado);
     resultado.instrucaoExecutada = true;
   } catch (const FaltaPagina &) {
     regBank.setPC(pcInicial);

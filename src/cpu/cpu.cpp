@@ -4,7 +4,7 @@
 // ----------------------------------------------------------------------------
 // Construtor e Controle Básico da CPU
 // ----------------------------------------------------------------------------
-CPU::CPU(MMU &mmu, int pid) : controlUnit(mmu, pid) {
+CPU::CPU(MMU &mmu) : controlUnit(mmu) {
     reset();
 }
 
@@ -55,8 +55,8 @@ const ControlUnit& CPU::getControlUnit() const {
 // decodifica os campos por mascaramento
 // de bits e executa a operação (aritmética/lógica via ULA, LOAD/STORE via
 // interface de memória, ou desvio de fluxo/HALT diretamente sobre o PC).
-ResultadoPasso CPU::step() {
-    return controlUnit.step(regBank, ula);
+ResultadoPasso CPU::step(int pid) {
+    return controlUnit.step(pid, regBank, ula);
 }
 
 // ----------------------------------------------------------------------------

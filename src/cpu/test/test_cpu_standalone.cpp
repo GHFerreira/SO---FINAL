@@ -27,10 +27,10 @@ int main() {
         endereco++;
     }
 
-    CPU cpu(mmu, 1);
+    CPU cpu(mmu);
     uint32_t instrucoes = 0;
     while (!cpu.isHalted()) {
-        ResultadoPasso resultado = cpu.step();
+        ResultadoPasso resultado = cpu.step(1);
         instrucoes += resultado.instrucaoExecutada ? 1u : 0u;
     }
 

@@ -78,7 +78,7 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
         mmu.limparProcessos();
         mmu.registrarProcesso(job.id, OS_RESERVED_MEM,
                               static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
-        CPU cpu(mmu, job.id);
+        CPU cpu(mmu);
         cpu.reset();
         cpu.setPC(0);
 
@@ -108,7 +108,7 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
                         break;
                     }
 
-                    ResultadoPasso resultado = cpu.step();
+                    ResultadoPasso resultado = cpu.step(job.id);
 
                     if (resultado.instrucaoExecutada) {
                         MetricsTracker::registrarInstrucao();

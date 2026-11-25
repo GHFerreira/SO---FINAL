@@ -24,10 +24,10 @@ void testarSoma(uint16_t valorA, uint16_t valorB) {
                           static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
     carregarPrograma(memoria, OS_RESERVED_MEM, valorA, valorB);
 
-    CPU cpu(mmu, 1);
+    CPU cpu(mmu);
     uint32_t passos = 0;
     while (!cpu.isHalted()) {
-        ResultadoPasso resultado = cpu.step();
+        ResultadoPasso resultado = cpu.step(1);
         assert(resultado.instrucaoExecutada);
         assert(++passos < 100);
     }

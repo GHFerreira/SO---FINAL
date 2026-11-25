@@ -5,7 +5,7 @@
 #include <exception>
 
 SistemaOperacional::SistemaOperacional()
-    : memoria(TAM_RAM), mmu(memoria), cpu(mmu, 1) {}
+    : memoria(TAM_RAM), mmu(memoria), cpu(mmu) {}
 
 
 void SistemaOperacional::carregarJob(const std::vector<uint16_t>& jobInstrucoes,
@@ -59,7 +59,7 @@ void SistemaOperacional::executarJob(int idJob,
 
     try {
         while (!cpu.isHalted()) {
-            ResultadoPasso resultado = cpu.step();
+            ResultadoPasso resultado = cpu.step(1);
             if (resultado.instrucaoExecutada) {
                 ++instrucoesExecutadas;
             }

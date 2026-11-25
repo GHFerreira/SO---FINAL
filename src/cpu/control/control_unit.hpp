@@ -11,6 +11,7 @@ struct ResultadoPasso {
   bool instrucaoExecutada = false;
   bool faltaPagina = false;
   uint32_t ciclosStall = 0;
+  uint32_t acessosRAM = 0;
 };
 
 /**
@@ -60,14 +61,15 @@ struct InstrucaoDecodificada {
 class ControlUnit {
 private:
   MMU &mmu;
-  int pid;
   bool haltStatus; ///< Flag de parada: true quando um HALT foi processado
 
-  uint16_t lerMemoria(uint16_t enderecoLogico, ResultadoPasso &resultado);
-  void escreverMemoria(uint16_t enderecoLogico, uint16_t dado,
+  uint16_t lerMemoria(int pid, uint16_t enderecoLogico,
+                      ResultadoPasso &resultado);
+  void escreverMemoria(int pid, uint16_t enderecoLogico, uint16_t dado,
                        ResultadoPasso &resultado);
-  uint16_t buscar(RegisterBank &regBank, ResultadoPasso &resultado);
+  uint16_t buscar(RegisterBank &regBank, int pid, ResultadoPasso &resultado);
   void executar(const InstrucaoDecodificada &instr, RegisterBank &regBank,
+                int pid,
                 ULA &ula, ResultadoPasso &resultado);
 
   /**
@@ -79,7 +81,7 @@ private:
                    uint16_t regDest, uint16_t regF1, uint16_t regF2);
 
 public:
-  ControlUnit(MMU &mmu, int pid);
+  explicit ControlUnit(MMU &mmu);
 
   /** Reinicia a Unidade de Controle (limpa a flag de HALT). */
   void reset();
@@ -111,7 +113,7 @@ public:
    * @brief Executa um ciclo de instrução completo (Fetch -> Decode -> Execute).
    * Não faz nada se a UC já estiver em estado HALT.
    */
-  ResultadoPasso step(RegisterBank &regBank, ULA &ula);
+  ResultadoPasso step(int pid, RegisterBank &regBank, ULA &ula);
 };
 
 #endif // CONTROL_UNIT_HPP

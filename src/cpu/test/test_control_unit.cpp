@@ -24,7 +24,7 @@ struct AmbienteTeste {
   RegisterBank registradores;
   ULA ula;
 
-  AmbienteTeste() : memoria(TAM_RAM), mmu(memoria), uc(mmu, 1) {
+  AmbienteTeste() : memoria(TAM_RAM), mmu(memoria), uc(mmu) {
     mmu.registrarProcesso(1, OS_RESERVED_MEM,
                           static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
   }
@@ -50,7 +50,7 @@ void testFetchLogico() {
   AmbienteTeste ambiente;
   ambiente.gravar(0, 0xF000);
 
-  ResultadoPasso resultado = ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ResultadoPasso resultado = ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   TEST_ASSERT(resultado.instrucaoExecutada);
   TEST_ASSERT(ambiente.registradores.getIR() == 0xF000);
   TEST_ASSERT(ambiente.registradores.getPC() == 1);
@@ -67,12 +67,12 @@ void testCicloCompletoSoma() {
   ambiente.gravar(10, 5);
   ambiente.gravar(11, 7);
 
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   TEST_ASSERT(ambiente.memoria.ler(OS_RESERVED_MEM + 12) == 12);
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   TEST_ASSERT(ambiente.uc.isHalted());
 }
 
@@ -81,9 +81,9 @@ void testDesviosLogicos() {
   ambiente.gravar(0, 0x7014);
   ambiente.gravar(20, 0x81FF);
 
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   TEST_ASSERT(ambiente.registradores.getPC() == 20);
-  ambiente.uc.step(ambiente.registradores, ambiente.ula);
+  ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   TEST_ASSERT(ambiente.registradores.getPC() == 0x1FF);
 }
 
@@ -92,7 +92,7 @@ void testOpcodeInvalido() {
   ambiente.gravar(0, 0x9000);
   bool lancou = false;
   try {
-    ambiente.uc.step(ambiente.registradores, ambiente.ula);
+    ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
   } catch (const std::runtime_error &) {
     lancou = true;
   }

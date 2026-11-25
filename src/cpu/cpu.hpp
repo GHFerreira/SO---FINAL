@@ -31,7 +31,7 @@ private:
     ControlUnit controlUnit;  ///< Unidade de Controle: orquestra Fetch -> Decode -> Execute
 
 public:
-    CPU(MMU &mmu, int pid);
+    explicit CPU(MMU &mmu);
 
     /** Reinicia a CPU (zera registradores, aponta PC para a área inicial do job e limpa o HALT da UC) */
     void reset();
@@ -48,7 +48,7 @@ public:
      * Unidade de Controle, fornecendo a ela o RegisterBank e a ULA.
      * @throws std::runtime_error se a UC encontrar um opcode desconhecido.
      */
-    ResultadoPasso step();
+    ResultadoPasso step(int pid);
 
     /** Exibe o estado atual da CPU (PC, IR e registradores) em qualquer stream */
     void imprimirEstado(std::ostream& out = std::cout) const;

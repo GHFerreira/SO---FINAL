@@ -19,7 +19,7 @@ void testCPUComULA() {
     MMUBaseLimite mmu(memoria);
     mmu.registrarProcesso(1, OS_RESERVED_MEM,
                           static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
-    CPU cpu(mmu, 1);
+    CPU cpu(mmu);
 
     const std::vector<uint16_t> programa = {
         0x100A, 0x110B, 0x2201, 0x4320, 0x320C, 0xF000
@@ -31,7 +31,7 @@ void testCPUComULA() {
     memoria.escreverKernel(OS_RESERVED_MEM + 11, 25);
 
     for (int i = 0; i < 6; ++i) {
-        ResultadoPasso resultado = cpu.step();
+        ResultadoPasso resultado = cpu.step(1);
         TEST_ASSERT(resultado.instrucaoExecutada);
     }
 

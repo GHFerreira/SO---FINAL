@@ -24,6 +24,8 @@ TARGET    := simulador
 # Fontes dos módulos (excluindo main.cpp)
 COMMON_SRCS := \
     $(SRC_DIR)/so.cpp \
+    $(SRC_DIR)/config.cpp \
+    $(SRC_DIR)/nucleo.cpp \
     $(SRC_DIR)/memoria.cpp \
     $(SRC_DIR)/mmu.cpp \
     $(SRC_DIR)/pcb.cpp \
@@ -52,8 +54,10 @@ TEST_MEM_BIN     := $(BUILD_DIR)/test_memoria
 TEST_CPU_MEM_BIN := $(BUILD_DIR)/test_cpu_memoria
 TEST_MMU_BIN     := $(BUILD_DIR)/test_mmu
 TEST_PCB_BIN     := $(BUILD_DIR)/test_pcb
+TEST_CONFIG_BIN  := $(BUILD_DIR)/test_config
+TEST_NUCLEO_BIN  := $(BUILD_DIR)/test_nucleo
 
-.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb clean help
+.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo clean help
 
 # Target padrão
 all: $(TARGET)
@@ -140,6 +144,22 @@ $(TEST_PCB_BIN): $(BUILD_DIR)/tests/teste_pcb.o \
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
+$(TEST_CONFIG_BIN): $(BUILD_DIR)/tests/teste_config.o $(BUILD_DIR)/$(SRC_DIR)/config.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+$(TEST_NUCLEO_BIN): $(BUILD_DIR)/tests/teste_nucleo.o \
+                    $(BUILD_DIR)/$(SRC_DIR)/nucleo.o \
+                    $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                    $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                    $(BUILD_DIR)/$(CPU_DIR)/cpu.o \
+                    $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
+                    $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
+                    $(BUILD_DIR)/$(REG_DIR)/register_table.o \
+                    $(BUILD_DIR)/$(ULA_DIR)/ula.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
 test_ula: $(TEST_ULA_BIN)
 	@echo ""
 	@echo "--- Executando Testes da ULA ---"
@@ -180,8 +200,18 @@ test_pcb: $(TEST_PCB_BIN)
 	@echo "--- Executando Testes de PCB e Parser ---"
 	@./$(TEST_PCB_BIN)
 
+test_config: $(TEST_CONFIG_BIN)
+	@echo ""
+	@echo "--- Executando Testes de Config CLI ---"
+	@./$(TEST_CONFIG_BIN)
+
+test_nucleo: $(TEST_NUCLEO_BIN)
+	@echo ""
+	@echo "--- Executando Testes do Nucleo ---"
+	@./$(TEST_NUCLEO_BIN)
+
 # Executa todos os testes
-test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb
+test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo
 	@echo ""
 	@echo "=========================================="
 	@echo "  TODOS OS TESTES PASSARAM COM SUCESSO!   "
@@ -211,5 +241,7 @@ help:
 	@echo "  make test_cpu_memoria - Executa os testes de integração CPU + Memória"
 	@echo "  make test_mmu         - Executa os testes da classe Memoria e MMU"
 	@echo "  make test_pcb         - Executa os testes do PCB e diretivas do Parser"
+	@echo "  make test_config      - Executa os testes de parsing da configuracao CLI"
+	@echo "  make test_nucleo      - Executa os testes de estado e contadores do nucleo"
 	@echo "  make clean          - Remove os binários e diretório de build"
 	@echo "  make help           - Exibe esta mensagem de ajuda"

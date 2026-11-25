@@ -1,17 +1,32 @@
 #include "loader/batch_manager.hpp"
+#include "src/config.hpp"
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <string>
 
 int main(int argc, char* argv[]) {
     std::vector<std::string> listaJobs;
+    Config config;
+    std::string erro;
 
-    if (argc > 1) {
-        for (int i = 1; i < argc; ++i) {
-            listaJobs.push_back(argv[i]);
-        }
-    } else {
-        // Cargas padrão de teste para validação do Simulador RISC
+    if (!Config::analisarArgumentos(argc, argv, config, listaJobs, erro)) {
+        std::cerr << "Erro: " << erro << '\n';
+        std::cerr << "Use --help para consultar as opcoes.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (config.ajudaSolicitada) {
+        std::cout << Config::textoAjuda();
+        return EXIT_SUCCESS;
+    }
+
+    if (!config.validarExecucaoFase21(erro)) {
+        std::cerr << "Erro: " << erro << '\n';
+        return EXIT_FAILURE;
+    }
+
+    if (listaJobs.empty()) {
         listaJobs = {
             "tests/job1_soma.txt",
             "tests/job2_vetor.txt",
