@@ -1,5 +1,5 @@
-#include "loader/batch_manager.hpp"
 #include "src/config.hpp"
+#include "src/simulador.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if (!config.validarExecucaoFase21(erro)) {
+    if (!config.validarExecucaoFase22(erro)) {
         std::cerr << "Erro: " << erro << '\n';
         return EXIT_FAILURE;
     }
@@ -34,6 +34,6 @@ int main(int argc, char* argv[]) {
         };
     }
 
-    BatchManager::executarLote(listaJobs);
+    Simulador::executarLote(listaJobs, config);
     return 0;
 }

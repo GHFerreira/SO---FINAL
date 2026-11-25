@@ -33,7 +33,7 @@ void testarLeituraArgumentos() {
     std::string erro;
     const std::vector<std::string> argumentos = {
         "simulador", "--cores=1", "--policy", "fcfs", "--mode=non-preemptive",
-        "--quantum", "5", "--ctx-cost=0", "--bits-offset", "4",
+        "--quantum", "5", "--ctx-cost=3", "--bits-offset", "4",
         "--frames=8", "--replacement", "fifo", "--bus-contention=false",
         "tests/job1_soma.txt"
     };
@@ -42,7 +42,8 @@ void testarLeituraArgumentos() {
     assert(erro.empty());
     assert(jobs.size() == 1 && jobs[0] == "tests/job1_soma.txt");
     assert(config.quantum == 5);
-    assert(config.validarExecucaoFase21(erro));
+    assert(config.custoTrocaContexto == 3);
+    assert(config.validarExecucaoFase22(erro));
 }
 
 void testarValoresInvalidos() {
@@ -70,8 +71,15 @@ void testarRecusaDeOpcaoFutura() {
         "simulador", "--cores", "2"
     };
     assert(analisar(argumentos, config, jobs, erro));
-    assert(!config.validarExecucaoFase21(erro));
+    assert(!config.validarExecucaoFase22(erro));
     assert(erro.find("somente --cores 1") != std::string::npos);
+}
+
+void testarCustoDeContextoNaFase22() {
+    Config config;
+    config.custoTrocaContexto = 7;
+    std::string erro;
+    assert(config.validarExecucaoFase22(erro));
 }
 
 int main() {
@@ -79,6 +87,7 @@ int main() {
     testarLeituraArgumentos();
     testarValoresInvalidos();
     testarRecusaDeOpcaoFutura();
+    testarCustoDeContextoNaFase22();
     std::cout << "Todos os testes de Config passaram!\n";
     return 0;
 }

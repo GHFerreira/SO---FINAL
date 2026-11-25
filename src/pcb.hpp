@@ -32,8 +32,10 @@ struct PCB {
     uint32_t instrucoesExecutadas = 0;
     uint32_t acessosRAM = 0;
     uint32_t acessosDisco = 0;
+    uint32_t ciclosCarga = 0;
     uint32_t ciclosExecucao = 0;
     uint32_t ciclosStall = 0;
+    uint32_t ciclosContexto = 0;
     uint32_t ciclosEspera = 0;
     uint32_t cicloFim = 0;
     uint32_t trocasContexto = 0;

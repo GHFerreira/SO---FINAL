@@ -25,6 +25,7 @@ TARGET    := simulador
 COMMON_SRCS := \
     $(SRC_DIR)/so.cpp \
     $(SRC_DIR)/config.cpp \
+    $(SRC_DIR)/simulador.cpp \
     $(SRC_DIR)/nucleo.cpp \
     $(SRC_DIR)/memoria.cpp \
     $(SRC_DIR)/mmu.cpp \
@@ -56,8 +57,9 @@ TEST_MMU_BIN     := $(BUILD_DIR)/test_mmu
 TEST_PCB_BIN     := $(BUILD_DIR)/test_pcb
 TEST_CONFIG_BIN  := $(BUILD_DIR)/test_config
 TEST_NUCLEO_BIN  := $(BUILD_DIR)/test_nucleo
+TEST_SIMULADOR_BIN := $(BUILD_DIR)/test_simulador
 
-.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo clean help
+.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo test_simulador clean help
 
 # Target padrão
 all: $(TARGET)
@@ -160,6 +162,10 @@ $(TEST_NUCLEO_BIN): $(BUILD_DIR)/tests/teste_nucleo.o \
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
+$(TEST_SIMULADOR_BIN): $(BUILD_DIR)/tests/teste_simulador.o $(COMMON_OBJS)
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
 test_ula: $(TEST_ULA_BIN)
 	@echo ""
 	@echo "--- Executando Testes da ULA ---"
@@ -210,8 +216,13 @@ test_nucleo: $(TEST_NUCLEO_BIN)
 	@echo "--- Executando Testes do Nucleo ---"
 	@./$(TEST_NUCLEO_BIN)
 
+test_simulador: $(TEST_SIMULADOR_BIN)
+	@echo ""
+	@echo "--- Executando Testes do Simulador FCFS ---"
+	@./$(TEST_SIMULADOR_BIN)
+
 # Executa todos os testes
-test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo
+test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo test_simulador
 	@echo ""
 	@echo "=========================================="
 	@echo "  TODOS OS TESTES PASSARAM COM SUCESSO!   "
@@ -243,5 +254,6 @@ help:
 	@echo "  make test_pcb         - Executa os testes do PCB e diretivas do Parser"
 	@echo "  make test_config      - Executa os testes de parsing da configuracao CLI"
 	@echo "  make test_nucleo      - Executa os testes de estado e contadores do nucleo"
+	@echo "  make test_simulador   - Executa os testes do motor FCFS de um nucleo"
 	@echo "  make clean          - Remove os binários e diretório de build"
 	@echo "  make help           - Exibe esta mensagem de ajuda"

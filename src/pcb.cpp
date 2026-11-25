@@ -27,8 +27,10 @@ void PCB::resetarContadores() {
     instrucoesExecutadas = 0;
     acessosRAM = 0;
     acessosDisco = 0;
+    ciclosCarga = 0;
     ciclosExecucao = 0;
     ciclosStall = 0;
+    ciclosContexto = 0;
     ciclosEspera = 0;
     cicloFim = 0;
     trocasContexto = 0;

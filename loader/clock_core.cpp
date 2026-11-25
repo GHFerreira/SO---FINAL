@@ -7,6 +7,11 @@ void ClockCore::reset() {
     ciclosJob = 0;
 }
 
+void ClockCore::resetarSimulacao() {
+    ciclosJob = 0;
+    ciclosTotalGlobal = 0;
+}
+
 void ClockCore::tickRAM() {
     ciclosJob += 1;
     ciclosTotalGlobal += 1;

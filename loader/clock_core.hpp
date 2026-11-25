@@ -14,6 +14,7 @@ private:
 
 public:
     static void reset();
+    static void resetarSimulacao();
     static void tickRAM();                    // Consome 1 ciclo por acesso à RAM
     static void tickDisco(int setores);       // Consome 50 ciclos por setor varrido
     static void tickBusca();                  // Consome 1 ciclo por busca de instrução
