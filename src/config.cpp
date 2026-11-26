@@ -189,14 +189,10 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
     return true;
 }
 
-bool Config::validarExecucaoFase22(std::string& erro) const {
+bool Config::validarExecucaoFase32(std::string& erro) const {
     erro.clear();
     if (numeroNucleos != 1) {
-        erro = "A Fase 2.2 ainda suporta somente --cores 1.";
-    } else if (politica != PoliticaEscalonamento::FCFS) {
-        erro = "A Fase 2.2 ainda suporta somente --policy fcfs.";
-    } else if (modo != ModoExecucao::NAO_PREEMPTIVO) {
-        erro = "A Fase 2.2 ainda suporta somente --mode non-preemptive.";
+        erro = "A Fase 3.2 ainda suporta somente --cores 1.";
     } else if (contencaoBarramento) {
         erro = "--bus-contention sera aplicado a partir da Fase 4.";
     } else if (bitsDeslocamento != 4 || quadros != 8 ||

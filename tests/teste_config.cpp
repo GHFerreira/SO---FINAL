@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 bool analisar(const std::vector<std::string>& argumentos, Config& config,
@@ -43,7 +44,7 @@ void testarLeituraArgumentos() {
     assert(jobs.size() == 1 && jobs[0] == "tests/job1_soma.txt");
     assert(config.quantum == 5);
     assert(config.custoTrocaContexto == 3);
-    assert(config.validarExecucaoFase22(erro));
+    assert(config.validarExecucaoFase32(erro));
 }
 
 void testarValoresInvalidos() {
@@ -71,15 +72,65 @@ void testarRecusaDeOpcaoFutura() {
         "simulador", "--cores", "2"
     };
     assert(analisar(argumentos, config, jobs, erro));
-    assert(!config.validarExecucaoFase22(erro));
+    assert(!config.validarExecucaoFase32(erro));
     assert(erro.find("somente --cores 1") != std::string::npos);
 }
 
-void testarCustoDeContextoNaFase22() {
+void testarCustoDeContextoConfiguravel() {
     Config config;
     config.custoTrocaContexto = 7;
     std::string erro;
-    assert(config.validarExecucaoFase22(erro));
+    assert(config.validarExecucaoFase32(erro));
+}
+
+void testarPoliticasAceitas() {
+    const PoliticaEscalonamento politicas[] = {
+        PoliticaEscalonamento::FCFS,
+        PoliticaEscalonamento::SJN,
+        PoliticaEscalonamento::ROUND_ROBIN,
+        PoliticaEscalonamento::PRIORIDADE
+    };
+    for (PoliticaEscalonamento politica : politicas) {
+        Config config;
+        config.politica = politica;
+        std::string erro;
+        assert(config.validarExecucaoFase32(erro));
+    }
+
+    const std::vector<std::pair<std::string, PoliticaEscalonamento>> valores = {
+        {"sjn", PoliticaEscalonamento::SJN},
+        {"rr", PoliticaEscalonamento::ROUND_ROBIN},
+        {"priority", PoliticaEscalonamento::PRIORIDADE}
+    };
+    for (const auto& valor : valores) {
+        Config config;
+        std::vector<std::string> jobs;
+        std::string erro;
+        std::vector<std::string> argumentos = {
+            "simulador", "--policy", valor.first
+        };
+        assert(analisar(argumentos, config, jobs, erro));
+        assert(config.politica == valor.second);
+        assert(config.validarExecucaoFase32(erro));
+    }
+
+    Config config;
+    config.modo = ModoExecucao::PREEMPTIVO;
+    std::string erro;
+    assert(config.validarExecucaoFase32(erro));
+}
+
+void testarModoPreemptivoPelaCLI() {
+    Config config;
+    std::vector<std::string> jobs;
+    std::string erro;
+    const std::vector<std::string> argumentos = {
+        "simulador", "--mode", "preemptive", "--quantum", "2"
+    };
+    assert(analisar(argumentos, config, jobs, erro));
+    assert(config.modo == ModoExecucao::PREEMPTIVO);
+    assert(config.quantum == 2);
+    assert(config.validarExecucaoFase32(erro));
 }
 
 int main() {
@@ -87,7 +138,9 @@ int main() {
     testarLeituraArgumentos();
     testarValoresInvalidos();
     testarRecusaDeOpcaoFutura();
-    testarCustoDeContextoNaFase22();
+    testarCustoDeContextoConfiguravel();
+    testarPoliticasAceitas();
+    testarModoPreemptivoPelaCLI();
     std::cout << "Todos os testes de Config passaram!\n";
     return 0;
 }

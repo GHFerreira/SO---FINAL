@@ -9,6 +9,7 @@
 
 struct ResultadoSimulacao {
     std::vector<PCB> processos;
+    std::vector<int> ordemExecucao;
     uint32_t ciclosPreparacao = 0;
     uint32_t makespan = 0;
     uint32_t ciclosContexto = 0;

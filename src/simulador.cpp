@@ -1,6 +1,7 @@
 #include "simulador.hpp"
 
 #include "defines.hpp"
+#include "escalonador.hpp"
 #include "memoria.hpp"
 #include "mmu.hpp"
 #include "nucleo.hpp"
@@ -25,6 +26,16 @@ uint32_t calcularTamanhoLogico(const JobData& job) {
                            static_cast<uint32_t>(variavel.first) + 1);
     }
     return std::max(tamanho, 1u);
+}
+
+std::string politicaParaTexto(PoliticaEscalonamento politica) {
+    switch (politica) {
+        case PoliticaEscalonamento::FCFS: return "FCFS";
+        case PoliticaEscalonamento::SJN: return "SJN";
+        case PoliticaEscalonamento::ROUND_ROBIN: return "ROUND ROBIN";
+        case PoliticaEscalonamento::PRIORIDADE: return "PRIORIDADE";
+    }
+    return "DESCONHECIDA";
 }
 
 void imprimirResumoProcesso(const PCB& processo) {
@@ -66,7 +77,8 @@ ResultadoSimulacao Simulador::executarLote(
     }
 
     std::cout << "===================================================\n"
-              << "[SIMULADOR RISC 16-BITS] - FCFS (1 NUCLEO)\n"
+              << "[SIMULADOR RISC 16-BITS] - "
+              << politicaParaTexto(config.politica) << " (1 NUCLEO)\n"
               << "===================================================\n";
 
     for (std::size_t indice = 0; indice < arquivosJobs.size(); ++indice) {
@@ -107,34 +119,49 @@ ResultadoSimulacao Simulador::executarLote(
         proximoEnderecoFisico = fimRegiao;
 
         ClockCore::tickDisco(1);
-        std::cout << "Job " << pid << " carregado na RAM para a fila FCFS.\n";
+        std::cout << "Job " << pid
+                  << " carregado na RAM para a fila de prontos.\n";
     }
 
     resultado.ciclosPreparacao = ClockCore::getCycles();
     const uint32_t inicioEscalonamento = ClockCore::getGlobalCycles();
     Nucleo nucleo(0, mmu);
-
+    std::unique_ptr<Escalonador> escalonador =
+        criarEscalonador(config.politica);
+    std::vector<std::size_t> filaProntos;
     for (std::size_t indice = 0; indice < resultado.processos.size(); ++indice) {
+        filaProntos.push_back(indice);
+    }
+    int ultimoPidExecutado = -1;
+
+    while (!filaProntos.empty()) {
+        const std::size_t indice =
+            escalonador->selecionarProximo(resultado.processos, filaProntos);
+        filaProntos.erase(
+            std::find(filaProntos.begin(), filaProntos.end(), indice));
         PCB& processo = resultado.processos[indice];
+        resultado.ordemExecucao.push_back(processo.pid);
         processo.estado = EstadoProcesso::EXECUTANDO;
 
-        if (indice > 0) {
+        if (ultimoPidExecutado != -1 && ultimoPidExecutado != processo.pid) {
             ++processo.trocasContexto;
-            processo.ciclosContexto = config.custoTrocaContexto;
+            processo.ciclosContexto += config.custoTrocaContexto;
             nucleo.iniciarTrocaContexto(config.custoTrocaContexto);
             ClockCore::adicionarCiclos(config.custoTrocaContexto);
             resultado.ciclosContexto += config.custoTrocaContexto;
         }
 
         nucleo.restaurarContexto(processo.contexto);
+        ultimoPidExecutado = processo.pid;
         std::cout << "\nDespachando PID " << processo.pid << ": "
                   << processo.nome << "\n";
         bool houveErro = false;
-        uint32_t instrucoesDesteProcesso = 0;
+        uint32_t ciclosQuantum = 0;
 
         try {
             while (!nucleo.processoFinalizado()) {
-                if (instrucoesDesteProcesso >= LIMITE_INSTRUCOES_POR_PROCESSO) {
+                if (processo.instrucoesExecutadas >=
+                    LIMITE_INSTRUCOES_POR_PROCESSO) {
                     throw std::runtime_error(
                         "limite de instrucoes atingido sem HALT");
                 }
@@ -142,6 +169,7 @@ ResultadoSimulacao Simulador::executarLote(
                 ResultadoPasso passo = nucleo.executarPasso(processo.pid);
                 processo.acessosRAM += passo.acessosRAM;
                 processo.ciclosExecucao += passo.acessosRAM;
+                ciclosQuantum += passo.acessosRAM;
                 for (uint32_t acesso = 0; acesso < passo.acessosRAM; ++acesso) {
                     ClockCore::tickRAM();
                 }
@@ -153,10 +181,15 @@ ResultadoSimulacao Simulador::executarLote(
 
                 if (passo.instrucaoExecutada) {
                     ++processo.instrucoesExecutadas;
-                    ++instrucoesDesteProcesso;
                 } else if (passo.ciclosStall == 0) {
                     throw std::runtime_error(
                         "CPU nao avancou nem concluiu a instrucao");
+                }
+
+                if (config.modo == ModoExecucao::PREEMPTIVO &&
+                    ciclosQuantum >= config.quantum &&
+                    !filaProntos.empty()) {
+                    break;
                 }
             }
         } catch (const std::exception& erro) {
@@ -168,9 +201,23 @@ ResultadoSimulacao Simulador::executarLote(
 
         processo.contexto = nucleo.salvarContexto();
         processo.halt = nucleo.processoFinalizado();
-        processo.estado = houveErro ? EstadoProcesso::ABORTADO
-                                    : EstadoProcesso::FINALIZADO;
+        const bool preemptado =
+            !houveErro && !processo.halt &&
+            config.modo == ModoExecucao::PREEMPTIVO &&
+            ciclosQuantum >= config.quantum && !filaProntos.empty();
+        if (houveErro) {
+            processo.estado = EstadoProcesso::ABORTADO;
+        } else if (processo.halt) {
+            processo.estado = EstadoProcesso::FINALIZADO;
+        } else if (preemptado) {
+            processo.estado = EstadoProcesso::PRONTO;
+            filaProntos.push_back(indice);
+        }
         nucleo.tornarOcioso();
+
+        if (preemptado) {
+            continue;
+        }
 
         const uint32_t tempoAtual =
             ClockCore::getGlobalCycles() - inicioEscalonamento;
