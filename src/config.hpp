@@ -37,7 +37,7 @@ struct Config {
     static bool analisarArgumentos(int argc, char* argv[], Config& config,
                                    std::vector<std::string>& arquivosJobs,
                                    std::string& erro);
-    bool validarExecucaoFase32(std::string& erro) const;
+    bool validarExecucaoFase42(std::string& erro) const;
     static std::string textoAjuda();
 };
 

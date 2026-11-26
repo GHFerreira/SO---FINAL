@@ -30,6 +30,7 @@ void PCB::resetarContadores() {
     ciclosCarga = 0;
     ciclosExecucao = 0;
     ciclosStall = 0;
+    ciclosContencaoBarramento = 0;
     ciclosContexto = 0;
     ciclosEspera = 0;
     cicloFim = 0;

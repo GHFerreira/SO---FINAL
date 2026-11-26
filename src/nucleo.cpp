@@ -27,6 +27,11 @@ void Nucleo::iniciarTrocaContexto(uint32_t ciclos) {
     contadores.ciclosContexto += ciclos;
 }
 
+void Nucleo::registrarStallBarramento(uint32_t ciclos) {
+    contadores.ciclosStall += ciclos;
+    contadores.ciclosContencaoBarramento += ciclos;
+}
+
 void Nucleo::retomarExecucao() {
     estado = EstadoNucleo::EXECUTANDO;
 }

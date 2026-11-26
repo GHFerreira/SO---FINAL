@@ -16,6 +16,7 @@ enum class EstadoNucleo {
 struct ContadoresNucleo {
     uint32_t ciclosExecucao = 0;
     uint32_t ciclosStall = 0;
+    uint32_t ciclosContencaoBarramento = 0;
     uint32_t ciclosContexto = 0;
     uint32_t ciclosOciosos = 0;
     uint32_t instrucoesExecutadas = 0;
@@ -33,6 +34,7 @@ public:
 
     ResultadoPasso executarPasso(int pid);
     void iniciarTrocaContexto(uint32_t ciclos);
+    void registrarStallBarramento(uint32_t ciclos);
     void retomarExecucao();
     void registrarOciosidade(uint32_t ciclos);
     void tornarOcioso();

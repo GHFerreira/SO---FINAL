@@ -76,10 +76,129 @@ void testarCustoDeTrocaEntreProcessos() {
     assert(resultado.processos[2].ciclosEspera == 21);
 }
 
+void testarMulticoreEContadoresPorNucleo() {
+    const std::vector<std::string> arquivos = {
+        "tests/job1_soma.txt", "tests/job2_vetor.txt", "tests/job3_loop.txt"
+    };
+    const uint32_t makespansEsperados[] = {40, 31, 23};
+    const uint32_t nucleosTestados[] = {1, 2, 4};
+
+    for (std::size_t caso = 0; caso < 3; ++caso) {
+        Config config;
+        config.numeroNucleos = nucleosTestados[caso];
+        ResultadoSimulacao resultado = Simulador::executarLote(arquivos, config);
+        assert(resultado.processos.size() == 3);
+        assert(resultado.ciclosPreparacao == 150);
+        assert(resultado.makespan == makespansEsperados[caso]);
+        assert(resultado.tempoTotal == 150 + makespansEsperados[caso]);
+        assert(resultado.contadoresNucleos.size() == nucleosTestados[caso]);
+        for (const ContadoresNucleo& contadores : resultado.contadoresNucleos) {
+            assert(contadores.ciclosExecucao + contadores.ciclosStall +
+                       contadores.ciclosContexto + contadores.ciclosOciosos ==
+                   resultado.makespan);
+        }
+        for (const PCB& processo : resultado.processos) {
+            assert(processo.estado == EstadoProcesso::FINALIZADO);
+        }
+        assert(resultado.processos[0].contexto.R[0] == 5);
+        assert(resultado.processos[1].contexto.R[0] == 20);
+    }
+}
+
+void testarCustoDeContextoMulticore() {
+    Config config;
+    config.numeroNucleos = 2;
+    config.custoTrocaContexto = 2;
+    ResultadoSimulacao resultado = Simulador::executarLote(
+        {"tests/job1_soma.txt", "tests/job2_vetor.txt", "tests/job3_loop.txt"},
+        config);
+
+    assert(resultado.makespan == 33);
+    assert(resultado.ciclosContexto == 2);
+    assert(resultado.tempoTotal == 183);
+    assert(resultado.contadoresNucleos[0].ciclosContexto == 2);
+    assert(resultado.contadoresNucleos[1].ciclosContexto == 0);
+    assert(resultado.processos[2].ciclosContexto == 2);
+}
+
+void testarDesempateDeterministicoPorNucleo() {
+    Config config;
+    config.numeroNucleos = 2;
+    ResultadoSimulacao resultado = Simulador::executarLote(
+        {"tests/job1_soma.txt", "tests/job1_soma.txt", "tests/job1_soma.txt"},
+        config);
+
+    assert((resultado.ordemExecucao == std::vector<int>{1, 2, 3}));
+    assert(resultado.makespan == 16);
+    assert(resultado.contadoresNucleos[0].ciclosExecucao == 16);
+    assert(resultado.contadoresNucleos[1].ciclosExecucao == 8);
+}
+
 void criarJobDeTeste(const std::string& caminho, int prioridade,
                     uint32_t burst) {
     std::ofstream arquivo(caminho);
     arquivo << "F000\n.priority " << prioridade << "\n.burst " << burst << "\n";
+}
+
+void criarJobComNops(const std::string& caminho, uint32_t quantidadeNops) {
+    std::ofstream arquivo(caminho);
+    for (uint32_t indice = 0; indice < quantidadeNops; ++indice) {
+        arquivo << "2000\n";
+    }
+    arquivo << "F000\n";
+}
+
+void testarContencaoBarramentoEArbitragemCircular() {
+    criarJobComNops("build/bus_rr_p1.txt", 1);
+    criarJobComNops("build/bus_rr_p2.txt", 1);
+    const std::vector<std::string> arquivos = {
+        "build/bus_rr_p1.txt", "build/bus_rr_p2.txt"
+    };
+
+    Config config;
+    config.numeroNucleos = 2;
+    ResultadoSimulacao semContencao =
+        Simulador::executarLote(arquivos, config);
+    assert(semContencao.makespan == 2);
+    assert(semContencao.processos[0].ciclosContencaoBarramento == 0);
+    assert(semContencao.processos[1].ciclosContencaoBarramento == 0);
+
+    config.contencaoBarramento = true;
+    ResultadoSimulacao comContencao =
+        Simulador::executarLote(arquivos, config);
+    assert(comContencao.makespan == 4);
+    assert(comContencao.tempoTotal == 104);
+    assert(comContencao.processos[0].ciclosContencaoBarramento == 1);
+    assert(comContencao.processos[1].ciclosContencaoBarramento == 2);
+    assert(comContencao.contadoresNucleos[0].ciclosContencaoBarramento == 1);
+    assert(comContencao.contadoresNucleos[1].ciclosContencaoBarramento == 2);
+    for (const ContadoresNucleo& contadores : comContencao.contadoresNucleos) {
+        assert(contadores.ciclosExecucao + contadores.ciclosStall +
+                   contadores.ciclosContexto + contadores.ciclosOciosos ==
+               comContencao.makespan);
+    }
+    for (const PCB& processo : comContencao.processos) {
+        assert(processo.calcularTempoRetorno() == processo.ciclosEspera +
+                   processo.ciclosExecucao + processo.ciclosStall);
+    }
+
+    ResultadoSimulacao repetida =
+        Simulador::executarLote(arquivos, config);
+    assert(repetida.makespan == comContencao.makespan);
+    assert(repetida.ordemExecucao == comContencao.ordemExecucao);
+    assert(repetida.processos[0].ciclosContencaoBarramento ==
+           comContencao.processos[0].ciclosContencaoBarramento);
+    assert(repetida.processos[1].ciclosContencaoBarramento ==
+           comContencao.processos[1].ciclosContencaoBarramento);
+
+    config.numeroNucleos = 1;
+    ResultadoSimulacao umNucleo =
+        Simulador::executarLote({"tests/job1_soma.txt"}, config);
+    config.contencaoBarramento = false;
+    ResultadoSimulacao umNucleoSemContencao =
+        Simulador::executarLote({"tests/job1_soma.txt"}, config);
+    assert(umNucleo.makespan == umNucleoSemContencao.makespan);
+    assert(umNucleo.tempoTotal == umNucleoSemContencao.tempoTotal);
 }
 
 void criarCargaDeTeste(const std::string& prefixo) {
@@ -237,6 +356,10 @@ int main() {
     testarBaselinePorJob();
     testarFilaFCFSEMemoriaIsolada();
     testarCustoDeTrocaEntreProcessos();
+    testarMulticoreEContadoresPorNucleo();
+    testarCustoDeContextoMulticore();
+    testarDesempateDeterministicoPorNucleo();
+    testarContencaoBarramentoEArbitragemCircular();
     testarIntegracaoSJN();
     testarIntegracaoPrioridade();
     testarGanttsDasPoliticas();

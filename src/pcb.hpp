@@ -35,6 +35,7 @@ struct PCB {
     uint32_t ciclosCarga = 0;
     uint32_t ciclosExecucao = 0;
     uint32_t ciclosStall = 0;
+    uint32_t ciclosContencaoBarramento = 0;
     uint32_t ciclosContexto = 0;
     uint32_t ciclosEspera = 0;
     uint32_t cicloFim = 0;

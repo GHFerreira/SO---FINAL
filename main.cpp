@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if (!config.validarExecucaoFase32(erro)) {
+    if (!config.validarExecucaoFase42(erro)) {
         std::cerr << "Erro: " << erro << '\n';
         return EXIT_FAILURE;
     }

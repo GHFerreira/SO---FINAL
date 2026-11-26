@@ -66,6 +66,10 @@ void testarEstadosECiclos() {
     assert(nucleo.getContadores().ciclosContexto == 3);
     assert(nucleo.getContadores().instrucoesExecutadas == 1);
 
+    nucleo.registrarStallBarramento(2);
+    assert(nucleo.getContadores().ciclosStall == 8);
+    assert(nucleo.getContadores().ciclosContencaoBarramento == 2);
+
     nucleo.registrarOciosidade(4);
     assert(nucleo.getContadores().ciclosOciosos == 4);
 }

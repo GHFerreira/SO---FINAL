@@ -189,12 +189,10 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
     return true;
 }
 
-bool Config::validarExecucaoFase32(std::string& erro) const {
+bool Config::validarExecucaoFase42(std::string& erro) const {
     erro.clear();
-    if (numeroNucleos != 1) {
-        erro = "A Fase 3.2 ainda suporta somente --cores 1.";
-    } else if (contencaoBarramento) {
-        erro = "--bus-contention sera aplicado a partir da Fase 4.";
+    if (numeroNucleos == 0) {
+        erro = "--cores deve ser maior que zero.";
     } else if (bitsDeslocamento != 4 || quadros != 8 ||
                substituicao != PoliticaSubstituicao::FIFO) {
         erro = "Configuracoes de paginacao serao aplicadas a partir da Fase 5.";

@@ -44,7 +44,7 @@ void testarLeituraArgumentos() {
     assert(jobs.size() == 1 && jobs[0] == "tests/job1_soma.txt");
     assert(config.quantum == 5);
     assert(config.custoTrocaContexto == 3);
-    assert(config.validarExecucaoFase32(erro));
+    assert(config.validarExecucaoFase42(erro));
 }
 
 void testarValoresInvalidos() {
@@ -64,7 +64,7 @@ void testarValoresInvalidos() {
     assert(!analisar(politicaInvalida, config, jobs, erro));
 }
 
-void testarRecusaDeOpcaoFutura() {
+void testarNucleosAceitosEValidacaoFutura() {
     Config config;
     std::vector<std::string> jobs;
     std::string erro;
@@ -72,15 +72,31 @@ void testarRecusaDeOpcaoFutura() {
         "simulador", "--cores", "2"
     };
     assert(analisar(argumentos, config, jobs, erro));
-    assert(!config.validarExecucaoFase32(erro));
-    assert(erro.find("somente --cores 1") != std::string::npos);
+    assert(config.validarExecucaoFase42(erro));
+
+    config.numeroNucleos = 0;
+    assert(!config.validarExecucaoFase42(erro));
+    assert(erro.find("maior que zero") != std::string::npos);
+
+    config.numeroNucleos = 2;
+    config.contencaoBarramento = true;
+    assert(config.validarExecucaoFase42(erro));
+
+    Config configCli;
+    const std::vector<std::string> argumentosComBarramento = {
+        "simulador", "--cores=2", "--bus-contention"
+    };
+    assert(analisar(argumentosComBarramento, configCli, jobs, erro));
+    assert(configCli.numeroNucleos == 2);
+    assert(configCli.contencaoBarramento);
+    assert(configCli.validarExecucaoFase42(erro));
 }
 
 void testarCustoDeContextoConfiguravel() {
     Config config;
     config.custoTrocaContexto = 7;
     std::string erro;
-    assert(config.validarExecucaoFase32(erro));
+    assert(config.validarExecucaoFase42(erro));
 }
 
 void testarPoliticasAceitas() {
@@ -94,7 +110,7 @@ void testarPoliticasAceitas() {
         Config config;
         config.politica = politica;
         std::string erro;
-        assert(config.validarExecucaoFase32(erro));
+        assert(config.validarExecucaoFase42(erro));
     }
 
     const std::vector<std::pair<std::string, PoliticaEscalonamento>> valores = {
@@ -111,13 +127,13 @@ void testarPoliticasAceitas() {
         };
         assert(analisar(argumentos, config, jobs, erro));
         assert(config.politica == valor.second);
-        assert(config.validarExecucaoFase32(erro));
+        assert(config.validarExecucaoFase42(erro));
     }
 
     Config config;
     config.modo = ModoExecucao::PREEMPTIVO;
     std::string erro;
-    assert(config.validarExecucaoFase32(erro));
+    assert(config.validarExecucaoFase42(erro));
 }
 
 void testarModoPreemptivoPelaCLI() {
@@ -130,14 +146,14 @@ void testarModoPreemptivoPelaCLI() {
     assert(analisar(argumentos, config, jobs, erro));
     assert(config.modo == ModoExecucao::PREEMPTIVO);
     assert(config.quantum == 2);
-    assert(config.validarExecucaoFase32(erro));
+    assert(config.validarExecucaoFase42(erro));
 }
 
 int main() {
     testarValoresPadrao();
     testarLeituraArgumentos();
     testarValoresInvalidos();
-    testarRecusaDeOpcaoFutura();
+    testarNucleosAceitosEValidacaoFutura();
     testarCustoDeContextoConfiguravel();
     testarPoliticasAceitas();
     testarModoPreemptivoPelaCLI();

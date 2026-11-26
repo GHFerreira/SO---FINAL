@@ -12,6 +12,11 @@ void ClockCore::resetarSimulacao() {
     ciclosTotalGlobal = 0;
 }
 
+void ClockCore::avancarTempo(uint32_t ciclos) {
+    ciclosJob += ciclos;
+    ciclosTotalGlobal += ciclos;
+}
+
 void ClockCore::tickRAM() {
     ciclosJob += 1;
     ciclosTotalGlobal += 1;

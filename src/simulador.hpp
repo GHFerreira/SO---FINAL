@@ -2,6 +2,7 @@
 #define SIMULADOR_HPP
 
 #include "config.hpp"
+#include "nucleo.hpp"
 #include "pcb.hpp"
 #include <cstdint>
 #include <string>
@@ -14,6 +15,7 @@ struct ResultadoSimulacao {
     uint32_t makespan = 0;
     uint32_t ciclosContexto = 0;
     uint32_t tempoTotal = 0;
+    std::vector<ContadoresNucleo> contadoresNucleos;
 };
 
 class Simulador {
