@@ -4,8 +4,10 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace std;
+
 int main() {
-    std::cout << "--- Executando Testes de Memoria e MMUBaseLimite ---" << std::endl;
+    cout << "--- Executando Testes de Memoria e MMUBaseLimite ---" << endl;
 
     // 1. Testes da classe Memoria
     Memoria memoria;
@@ -29,7 +31,7 @@ int main() {
     bool falhouLeituraSO = false;
     try {
         memoria.ler(OS_RESERVED_MEM - 1);
-    } catch (const std::runtime_error&) {
+    } catch (const runtime_error&) {
         falhouLeituraSO = true;
     }
     assert(falhouLeituraSO);
@@ -37,7 +39,7 @@ int main() {
     bool falhouEscritaSO = false;
     try {
         memoria.escrever(0x0000, 0x0001);
-    } catch (const std::runtime_error&) {
+    } catch (const runtime_error&) {
         falhouEscritaSO = true;
     }
     assert(falhouEscritaSO);
@@ -46,7 +48,7 @@ int main() {
     assert(memoria.getTotalAcessos() == 0);
     assert(memoria.lerKernel(0x0010) == 0);
     assert(memoria.ler(OS_RESERVED_MEM) == 0);
-    std::cout << "OK: classe Memoria validada" << std::endl;
+    cout << "OK: classe Memoria validada" << endl;
 
     // 2. Testes da MMUBaseLimite com dois processos
     memoria.limpar();
@@ -79,13 +81,13 @@ int main() {
     assert(mmu.ler(1, 0x000A, &acessoLeitura) == 0x0055);
     assert(acessoLeitura.enderecoFisico == 522);
     assert(mmu.ler(2, 0x000A) == 0x0099);
-    std::cout << "OK: traducao e isolamento entre processos validados" << std::endl;
+    cout << "OK: traducao e isolamento entre processos validados" << endl;
 
     // 3. Protecoes de limite e processo inexistente
     bool falhouLimiteExato = false;
     try {
         mmu.traduzir(1, 64);
-    } catch (const std::runtime_error&) {
+    } catch (const runtime_error&) {
         falhouLimiteExato = true;
     }
     assert(falhouLimiteExato);
@@ -93,7 +95,7 @@ int main() {
     bool falhouAcimaLimite = false;
     try {
         mmu.ler(1, 100);
-    } catch (const std::runtime_error&) {
+    } catch (const runtime_error&) {
         falhouAcimaLimite = true;
     }
     assert(falhouAcimaLimite);
@@ -101,7 +103,7 @@ int main() {
     bool falhouPidInexistente = false;
     try {
         mmu.traduzir(99, 0);
-    } catch (const std::runtime_error&) {
+    } catch (const runtime_error&) {
         falhouPidInexistente = true;
     }
     assert(falhouPidInexistente);
@@ -110,7 +112,7 @@ int main() {
     bool falhouBaseSO = false;
     try {
         mmu.registrarProcesso(3, 500, 32);
-    } catch (const std::invalid_argument&) {
+    } catch (const invalid_argument&) {
         falhouBaseSO = true;
     }
     assert(falhouBaseSO);
@@ -118,7 +120,7 @@ int main() {
     bool falhouLimiteZero = false;
     try {
         mmu.registrarProcesso(3, 700, 0);
-    } catch (const std::invalid_argument&) {
+    } catch (const invalid_argument&) {
         falhouLimiteZero = true;
     }
     assert(falhouLimiteZero);
@@ -126,7 +128,7 @@ int main() {
     bool falhouEstouroRAM = false;
     try {
         mmu.registrarProcesso(3, 65500, 100);
-    } catch (const std::invalid_argument&) {
+    } catch (const invalid_argument&) {
         falhouEstouroRAM = true;
     }
     assert(falhouEstouroRAM);
@@ -137,8 +139,8 @@ int main() {
     assert(mmu.possuiProcesso(2));
     mmu.limparProcessos();
     assert(!mmu.possuiProcesso(2));
-    std::cout << "OK: protecoes e ciclo de vida da MMU validados" << std::endl;
+    cout << "OK: protecoes e ciclo de vida da MMU validados" << endl;
 
-    std::cout << "Todos os testes de Memoria e MMU passaram!" << std::endl;
+    cout << "Todos os testes de Memoria e MMU passaram!" << endl;
     return 0;
 }

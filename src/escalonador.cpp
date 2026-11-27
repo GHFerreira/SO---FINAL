@@ -2,14 +2,16 @@
 #include <algorithm>
 #include <stdexcept>
 
+using namespace std;
+
 namespace {
 class EscalonadorFCFS : public Escalonador {
 public:
-    std::size_t selecionarProximo(
-        const std::vector<PCB>&,
-        const std::vector<std::size_t>& filaProntos) const override {
+    size_t selecionarProximo(
+        const vector<PCB>&,
+        const vector<size_t>& filaProntos) const override {
         if (filaProntos.empty()) {
-            throw std::invalid_argument("Fila FCFS vazia.");
+            throw invalid_argument("Fila FCFS vazia.");
         }
         return filaProntos.front();
     }
@@ -17,15 +19,15 @@ public:
 
 class EscalonadorSJN : public Escalonador {
 public:
-    std::size_t selecionarProximo(
-        const std::vector<PCB>& processos,
-        const std::vector<std::size_t>& filaProntos) const override {
+    size_t selecionarProximo(
+        const vector<PCB>& processos,
+        const vector<size_t>& filaProntos) const override {
         if (filaProntos.empty()) {
-            throw std::invalid_argument("Fila SJN vazia.");
+            throw invalid_argument("Fila SJN vazia.");
         }
-        return *std::min_element(
+        return *min_element(
             filaProntos.begin(), filaProntos.end(),
-            [&processos](std::size_t indiceA, std::size_t indiceB) {
+            [&processos](size_t indiceA, size_t indiceB) {
                 const PCB& processoA = processos.at(indiceA);
                 const PCB& processoB = processos.at(indiceB);
                 const uint32_t restanteA =
@@ -46,11 +48,11 @@ public:
 
 class EscalonadorRoundRobin : public Escalonador {
 public:
-    std::size_t selecionarProximo(
-        const std::vector<PCB>&,
-        const std::vector<std::size_t>& filaProntos) const override {
+    size_t selecionarProximo(
+        const vector<PCB>&,
+        const vector<size_t>& filaProntos) const override {
         if (filaProntos.empty()) {
-            throw std::invalid_argument("Fila Round Robin vazia.");
+            throw invalid_argument("Fila Round Robin vazia.");
         }
         return filaProntos.front();
     }
@@ -58,15 +60,15 @@ public:
 
 class EscalonadorPrioridade : public Escalonador {
 public:
-    std::size_t selecionarProximo(
-        const std::vector<PCB>& processos,
-        const std::vector<std::size_t>& filaProntos) const override {
+    size_t selecionarProximo(
+        const vector<PCB>& processos,
+        const vector<size_t>& filaProntos) const override {
         if (filaProntos.empty()) {
-            throw std::invalid_argument("Fila de prioridade vazia.");
+            throw invalid_argument("Fila de prioridade vazia.");
         }
-        return *std::min_element(
+        return *min_element(
             filaProntos.begin(), filaProntos.end(),
-            [&processos](std::size_t indiceA, std::size_t indiceB) {
+            [&processos](size_t indiceA, size_t indiceB) {
                 const PCB& processoA = processos.at(indiceA);
                 const PCB& processoB = processos.at(indiceB);
                 if (processoA.prioridade != processoB.prioridade) {
@@ -78,16 +80,16 @@ public:
 };
 }
 
-std::unique_ptr<Escalonador> criarEscalonador(PoliticaEscalonamento politica) {
+unique_ptr<Escalonador> criarEscalonador(PoliticaEscalonamento politica) {
     switch (politica) {
         case PoliticaEscalonamento::FCFS:
-            return std::make_unique<EscalonadorFCFS>();
+            return make_unique<EscalonadorFCFS>();
         case PoliticaEscalonamento::SJN:
-            return std::make_unique<EscalonadorSJN>();
+            return make_unique<EscalonadorSJN>();
         case PoliticaEscalonamento::ROUND_ROBIN:
-            return std::make_unique<EscalonadorRoundRobin>();
+            return make_unique<EscalonadorRoundRobin>();
         case PoliticaEscalonamento::PRIORIDADE:
-            return std::make_unique<EscalonadorPrioridade>();
+            return make_unique<EscalonadorPrioridade>();
     }
-    throw std::invalid_argument("Politica de escalonamento desconhecida.");
+    throw invalid_argument("Politica de escalonamento desconhecida.");
 }

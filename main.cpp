@@ -5,24 +5,26 @@
 #include <vector>
 #include <string>
 
+using namespace std;
+
 int main(int argc, char* argv[]) {
-    std::vector<std::string> listaJobs;
+    vector<string> listaJobs;
     Config config;
-    std::string erro;
+    string erro;
 
     if (!Config::analisarArgumentos(argc, argv, config, listaJobs, erro)) {
-        std::cerr << "Erro: " << erro << '\n';
-        std::cerr << "Use --help para consultar as opcoes.\n";
+        cerr << "Erro: " << erro << '\n';
+        cerr << "Use --help para consultar as opcoes.\n";
         return EXIT_FAILURE;
     }
 
     if (config.ajudaSolicitada) {
-        std::cout << Config::textoAjuda();
+        cout << Config::textoAjuda();
         return EXIT_SUCCESS;
     }
 
     if (!config.validarExecucaoFase42(erro)) {
-        std::cerr << "Erro: " << erro << '\n';
+        cerr << "Erro: " << erro << '\n';
         return EXIT_FAILURE;
     }
 

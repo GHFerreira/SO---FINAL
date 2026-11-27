@@ -5,23 +5,25 @@
 #include <iostream>
 #include <ostream>
 
+using namespace std;
+
 namespace {
 
 constexpr int LARGURA_PALAVRA_16_BITS = 4;
 
-void imprimirHex16(std::ostream& saida, uint16_t valor) {
+void imprimirHex16(ostream& saida, uint16_t valor) {
     saida << "0x"
-          << std::uppercase
-          << std::hex
-          << std::setw(LARGURA_PALAVRA_16_BITS)
-          << std::setfill('0')
+          << uppercase
+          << hex
+          << setw(LARGURA_PALAVRA_16_BITS)
+          << setfill('0')
           << valor
-          << std::dec
-          << std::nouppercase
-          << std::setfill(' ');
+          << dec
+          << nouppercase
+          << setfill(' ');
 }
 
-void imprimirRelatorio(std::ostream& saida, const JobMetrics& metricas) {
+void imprimirRelatorio(ostream& saida, const JobMetrics& metricas) {
     saida << "--- ESTADO DA CPU ---\n";
 
     saida << "PC: ";
@@ -47,20 +49,24 @@ void imprimirRelatorio(std::ostream& saida, const JobMetrics& metricas) {
     saida << "Instrucoes Executadas: " << metricas.instrucoesExecutadas << '\n';
     saida << "Acessos a Memoria (RAM): " << metricas.acessosRAM << '\n';
     saida << "Acessos ao Disco (I/O): " << metricas.acessosDisco << '\n';
+    saida << "Acertos de memoria: " << metricas.hitsMemoria << '\n';
+    saida << "Faltas de pagina: " << metricas.faltasPagina << '\n';
+    saida << "Substituicoes de pagina: "
+          << metricas.substituicoesPagina << '\n';
     saida << "CLOCK TOTAL DESTE JOB: " << metricas.clockTotal << " ciclos\n";
 }
 
 } // namespace
 
 void Reporter::exibirTerminal(const JobMetrics& metricas) {
-    imprimirRelatorio(std::cout, metricas);
+    imprimirRelatorio(cout, metricas);
 }
 
-void Reporter::salvarOutputDat(const std::string& caminhoArquivo, const JobMetrics& metricas) {
-    std::ofstream arquivo(caminhoArquivo, std::ios::app);
+void Reporter::salvarOutputDat(const string& caminhoArquivo, const JobMetrics& metricas) {
+    ofstream arquivo(caminhoArquivo, ios::app);
 
     if (!arquivo.is_open()) {
-        std::cerr << "[REPORTER] Falha ao abrir arquivo de saida: "
+        cerr << "[REPORTER] Falha ao abrir arquivo de saida: "
                   << caminhoArquivo << '\n';
         return;
     }

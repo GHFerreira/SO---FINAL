@@ -5,8 +5,10 @@
 #include <iostream>
 #include <string>
 
+using namespace std;
+
 int main() {
-    std::cout << "--- Executando Testes de PCB e Diretivas do Parser ---" << std::endl;
+    cout << "--- Executando Testes de PCB e Diretivas do Parser ---" << endl;
 
     // 1. Inicializacao e utilitarios do PCB
     PCB pcb1(1, "job_alpha", 2, 15);
@@ -34,7 +36,7 @@ int main() {
     assert(pcb1.faltasPagina == 0);
     assert(pcb1.cicloFim == 0);
     assert(pcb1.estado == EstadoProcesso::NOVO);
-    std::cout << "OK: inicializacao e reset de contadores do PCB validados" << std::endl;
+    cout << "OK: inicializacao e reset de contadores do PCB validados" << endl;
 
     // 2. Salvamento e restauracao de contexto entre dois PCBs
     RegisterBank banco;
@@ -69,7 +71,7 @@ int main() {
     }
     assert(banco.getPC() == 0x0044);
     assert(banco.getIR() == 0xF000);
-    std::cout << "OK: troca de contexto entre PCBs validada" << std::endl;
+    cout << "OK: troca de contexto entre PCBs validada" << endl;
 
     // 3. Compatibilidade retroativa com jobs antigos (sem diretivas)
     JobData jobAntigo;
@@ -78,12 +80,12 @@ int main() {
     assert(jobAntigo.prioridade == 0);
     assert(jobAntigo.instrucoes.size() == 5);
     assert(jobAntigo.burst == 5);
-    std::cout << "OK: compatibilidade do JobParser com jobs antigos validada" << std::endl;
+    cout << "OK: compatibilidade do JobParser com jobs antigos validada" << endl;
 
     // 4. Leitura das diretivas .priority e .burst
-    const std::string caminhoTemporario = "build/teste_job_diretivas.txt";
+    const string caminhoTemporario = "build/teste_job_diretivas.txt";
     {
-        std::ofstream arquivo(caminhoTemporario);
+        ofstream arquivo(caminhoTemporario);
         assert(arquivo.is_open());
         arquivo << "// Job de teste com diretivas\n";
         arquivo << ".priority 3\n";
@@ -101,8 +103,8 @@ int main() {
     assert(jobComDiretivas.burst == 25);
     assert(jobComDiretivas.instrucoes.size() == 2);
     assert(jobComDiretivas.variaveis.size() == 1);
-    std::cout << "OK: leitura das diretivas .priority e .burst validada" << std::endl;
+    cout << "OK: leitura das diretivas .priority e .burst validada" << endl;
 
-    std::cout << "Todos os testes de PCB e Parser passaram!" << std::endl;
+    cout << "Todos os testes de PCB e Parser passaram!" << endl;
     return 0;
 }

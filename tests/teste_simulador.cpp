@@ -4,9 +4,11 @@
 #include <iostream>
 #include <vector>
 
+using namespace std;
+
 void testarBaselinePorJob() {
     Config config;
-    const std::vector<std::string> arquivos = {
+    const vector<string> arquivos = {
         "tests/job1_soma.txt",
         "tests/job2_vetor.txt",
         "tests/job3_loop.txt"
@@ -15,19 +17,22 @@ void testarBaselinePorJob() {
     const uint32_t acessosEsperados[] = {8, 9, 23};
     const uint32_t instrucoesEsperadas[] = {5, 6, 17};
 
-    for (std::size_t indice = 0; indice < arquivos.size(); ++indice) {
+    for (size_t indice = 0; indice < arquivos.size(); ++indice) {
         ResultadoSimulacao resultado =
             Simulador::executarLote({arquivos[indice]}, config);
         assert(resultado.processos.size() == 1);
         assert(resultado.ciclosPreparacao == 50);
-        assert(resultado.makespan == acessosEsperados[indice]);
-        assert(resultado.tempoTotal == clocksEsperados[indice]);
+        assert(resultado.makespan == acessosEsperados[indice] + 50);
+        assert(resultado.tempoTotal == clocksEsperados[indice] + 50);
         assert(resultado.processos[0].ciclosCarga == 50);
         assert(resultado.processos[0].ciclosExecucao == acessosEsperados[indice]);
         assert(resultado.processos[0].acessosRAM == acessosEsperados[indice]);
         assert(resultado.processos[0].instrucoesExecutadas ==
                instrucoesEsperadas[indice]);
-        assert(resultado.processos[0].cicloFim == acessosEsperados[indice]);
+        assert(resultado.processos[0].cicloFim == acessosEsperados[indice] + 50);
+        assert(resultado.processos[0].ciclosStall == 50);
+        assert(resultado.processos[0].faltasPagina == 1);
+        assert(resultado.processos[0].acessosDisco == 2);
         assert(resultado.processos[0].ciclosEspera == 0);
         assert(resultado.processos[0].estado == EstadoProcesso::FINALIZADO);
     }
@@ -41,18 +46,17 @@ void testarFilaFCFSEMemoriaIsolada() {
 
     assert(resultado.processos.size() == 3);
     assert(resultado.ciclosPreparacao == 150);
-    assert(resultado.makespan == 40);
-    assert(resultado.tempoTotal == 190);
-    assert(resultado.processos[0].cicloFim == 8);
-    assert(resultado.processos[1].cicloFim == 17);
-    assert(resultado.processos[2].cicloFim == 40);
+    assert(resultado.makespan == 190);
+    assert(resultado.tempoTotal == 340);
+    assert(resultado.processos[0].cicloFim == 58);
+    assert(resultado.processos[1].cicloFim == 117);
+    assert(resultado.processos[2].cicloFim == 190);
     assert(resultado.processos[0].ciclosEspera == 0);
-    assert(resultado.processos[1].ciclosEspera == 8);
-    assert(resultado.processos[2].ciclosEspera == 17);
-    assert(resultado.processos[0].enderecoBase <
-           resultado.processos[1].enderecoBase);
-    assert(resultado.processos[1].enderecoBase <
-           resultado.processos[2].enderecoBase);
+    assert(resultado.processos[1].ciclosEspera == 58);
+    assert(resultado.processos[2].ciclosEspera == 117);
+    assert(resultado.processos[0].enderecoBase == 0);
+    assert(resultado.processos[1].enderecoBase == 0);
+    assert(resultado.processos[2].enderecoBase == 0);
     assert(resultado.processos[0].contexto.R[0] == 5);
     assert(resultado.processos[1].contexto.R[0] == 20);
     assert(resultado.processos[2].contexto.R[3] == 0);
@@ -67,23 +71,23 @@ void testarCustoDeTrocaEntreProcessos() {
 
     assert(resultado.ciclosPreparacao == 150);
     assert(resultado.ciclosContexto == 4);
-    assert(resultado.makespan == 44);
-    assert(resultado.tempoTotal == 194);
+    assert(resultado.makespan == 194);
+    assert(resultado.tempoTotal == 344);
     assert(resultado.processos[0].trocasContexto == 0);
     assert(resultado.processos[1].trocasContexto == 1);
     assert(resultado.processos[2].trocasContexto == 1);
-    assert(resultado.processos[1].ciclosEspera == 10);
-    assert(resultado.processos[2].ciclosEspera == 21);
+    assert(resultado.processos[1].ciclosEspera == 60);
+    assert(resultado.processos[2].ciclosEspera == 121);
 }
 
 void testarMulticoreEContadoresPorNucleo() {
-    const std::vector<std::string> arquivos = {
+    const vector<string> arquivos = {
         "tests/job1_soma.txt", "tests/job2_vetor.txt", "tests/job3_loop.txt"
     };
-    const uint32_t makespansEsperados[] = {40, 31, 23};
+    const uint32_t makespansEsperados[] = {190, 181, 177};
     const uint32_t nucleosTestados[] = {1, 2, 4};
 
-    for (std::size_t caso = 0; caso < 3; ++caso) {
+    for (size_t caso = 0; caso < 3; ++caso) {
         Config config;
         config.numeroNucleos = nucleosTestados[caso];
         ResultadoSimulacao resultado = Simulador::executarLote(arquivos, config);
@@ -113,9 +117,9 @@ void testarCustoDeContextoMulticore() {
         {"tests/job1_soma.txt", "tests/job2_vetor.txt", "tests/job3_loop.txt"},
         config);
 
-    assert(resultado.makespan == 33);
+    assert(resultado.makespan == 183);
     assert(resultado.ciclosContexto == 2);
-    assert(resultado.tempoTotal == 183);
+    assert(resultado.tempoTotal == 333);
     assert(resultado.contadoresNucleos[0].ciclosContexto == 2);
     assert(resultado.contadoresNucleos[1].ciclosContexto == 0);
     assert(resultado.processos[2].ciclosContexto == 2);
@@ -128,20 +132,20 @@ void testarDesempateDeterministicoPorNucleo() {
         {"tests/job1_soma.txt", "tests/job1_soma.txt", "tests/job1_soma.txt"},
         config);
 
-    assert((resultado.ordemExecucao == std::vector<int>{1, 2, 3}));
-    assert(resultado.makespan == 16);
+    assert((resultado.ordemExecucao == vector<int>{1, 2, 3}));
+    assert(resultado.makespan == 166);
     assert(resultado.contadoresNucleos[0].ciclosExecucao == 16);
     assert(resultado.contadoresNucleos[1].ciclosExecucao == 8);
 }
 
-void criarJobDeTeste(const std::string& caminho, int prioridade,
+void criarJobDeTeste(const string& caminho, int prioridade,
                     uint32_t burst) {
-    std::ofstream arquivo(caminho);
+    ofstream arquivo(caminho);
     arquivo << "F000\n.priority " << prioridade << "\n.burst " << burst << "\n";
 }
 
-void criarJobComNops(const std::string& caminho, uint32_t quantidadeNops) {
-    std::ofstream arquivo(caminho);
+void criarJobComNops(const string& caminho, uint32_t quantidadeNops) {
+    ofstream arquivo(caminho);
     for (uint32_t indice = 0; indice < quantidadeNops; ++indice) {
         arquivo << "2000\n";
     }
@@ -149,9 +153,9 @@ void criarJobComNops(const std::string& caminho, uint32_t quantidadeNops) {
 }
 
 void testarContencaoBarramentoEArbitragemCircular() {
-    criarJobComNops("build/bus_rr_p1.txt", 1);
-    criarJobComNops("build/bus_rr_p2.txt", 1);
-    const std::vector<std::string> arquivos = {
+    criarJobComNops("build/bus_rr_p1.txt", 2);
+    criarJobComNops("build/bus_rr_p2.txt", 2);
+    const vector<string> arquivos = {
         "build/bus_rr_p1.txt", "build/bus_rr_p2.txt"
     };
 
@@ -159,19 +163,19 @@ void testarContencaoBarramentoEArbitragemCircular() {
     config.numeroNucleos = 2;
     ResultadoSimulacao semContencao =
         Simulador::executarLote(arquivos, config);
-    assert(semContencao.makespan == 2);
+    assert(semContencao.makespan == 104);
     assert(semContencao.processos[0].ciclosContencaoBarramento == 0);
     assert(semContencao.processos[1].ciclosContencaoBarramento == 0);
 
     config.contencaoBarramento = true;
     ResultadoSimulacao comContencao =
         Simulador::executarLote(arquivos, config);
-    assert(comContencao.makespan == 4);
-    assert(comContencao.tempoTotal == 104);
-    assert(comContencao.processos[0].ciclosContencaoBarramento == 1);
-    assert(comContencao.processos[1].ciclosContencaoBarramento == 2);
-    assert(comContencao.contadoresNucleos[0].ciclosContencaoBarramento == 1);
-    assert(comContencao.contadoresNucleos[1].ciclosContencaoBarramento == 2);
+    assert(comContencao.makespan == 105);
+    assert(comContencao.tempoTotal == 205);
+    assert(comContencao.processos[0].ciclosContencaoBarramento == 0);
+    assert(comContencao.processos[1].ciclosContencaoBarramento == 1);
+    assert(comContencao.contadoresNucleos[0].ciclosContencaoBarramento == 0);
+    assert(comContencao.contadoresNucleos[1].ciclosContencaoBarramento == 1);
     for (const ContadoresNucleo& contadores : comContencao.contadoresNucleos) {
         assert(contadores.ciclosExecucao + contadores.ciclosStall +
                    contadores.ciclosContexto + contadores.ciclosOciosos ==
@@ -201,13 +205,61 @@ void testarContencaoBarramentoEArbitragemCircular() {
     assert(umNucleo.tempoTotal == umNucleoSemContencao.tempoTotal);
 }
 
-void criarCargaDeTeste(const std::string& prefixo) {
+void testarIntegracaoPaginadaComPoucosFrames() {
+    Config config;
+    config.bitsDeslocamento = 2;
+    config.quadros = 2;
+    config.substituicao = PoliticaSubstituicao::FIFO;
+    ResultadoSimulacao resultado = Simulador::executarLote(
+        {"tests/job1_soma.txt"}, config);
+
+    assert(resultado.processos.size() == 1);
+    const PCB& processo = resultado.processos[0];
+    assert(processo.estado == EstadoProcesso::FINALIZADO);
+    assert(processo.contexto.R[2] == 12);
+    assert(processo.instrucoesExecutadas == 5);
+    assert(processo.faltasPagina == 5);
+    assert(processo.substituicoesPagina == 3);
+    assert(processo.ciclosStall == 250);
+    assert(processo.ciclosExecucao == 10);
+    assert(processo.acessosDisco == 6);
+    assert(resultado.makespan == 260);
+    assert(resultado.tempoTotal == 310);
+}
+
+void testarIntegracaoMulticorePaginadaComPoucosFrames() {
+    Config config;
+    config.numeroNucleos = 2;
+    config.bitsDeslocamento = 2;
+    config.quadros = 2;
+    config.substituicao = PoliticaSubstituicao::LRU;
+    ResultadoSimulacao resultado = Simulador::executarLote(
+        {"tests/job1_soma.txt", "tests/job2_vetor.txt"}, config);
+
+    assert(resultado.processos.size() == 2);
+    assert(resultado.makespan > 0);
+    for (const PCB& processo : resultado.processos) {
+        assert(processo.estado == EstadoProcesso::FINALIZADO);
+        assert(processo.contexto.R[2] == 12);
+        assert(processo.faltasPagina > 0);
+        assert(processo.substituicoesPagina > 0);
+        assert(processo.calcularTempoRetorno() == processo.ciclosEspera +
+                   processo.ciclosExecucao + processo.ciclosStall);
+    }
+    for (const ContadoresNucleo& contadores : resultado.contadoresNucleos) {
+        assert(contadores.ciclosExecucao + contadores.ciclosStall +
+                   contadores.ciclosContexto + contadores.ciclosOciosos ==
+               resultado.makespan);
+    }
+}
+
+void criarCargaDeTeste(const string& prefixo) {
     const int prioridades[] = {3, 2, 1};
     const int rajadas[] = {4, 3, 2};
     const int quantidades[] = {3, 2, 1};
-    for (std::size_t indice = 0; indice < 3; ++indice) {
-        std::ofstream arquivo("build/" + prefixo + "_p" +
-                              std::to_string(indice + 1) + ".txt");
+    for (size_t indice = 0; indice < 3; ++indice) {
+        ofstream arquivo("build/" + prefixo + "_p" +
+                              to_string(indice + 1) + ".txt");
         arquivo << ".priority " << prioridades[indice] << "\n.burst "
                 << rajadas[indice] << "\n";
         for (int instrucao = 0; instrucao < quantidades[indice]; ++instrucao) {
@@ -233,47 +285,47 @@ void testarGanttsDasPoliticas() {
         PoliticaEscalonamento::ROUND_ROBIN,
         PoliticaEscalonamento::PRIORIDADE
     };
-    const std::vector<std::vector<int>> ordemNaoPreemptiva = {
+    const vector<vector<int>> ordemNaoPreemptiva = {
         {1, 2, 3}, {3, 2, 1}, {1, 2, 3}, {3, 2, 1}
     };
-    const std::vector<std::vector<int>> ordemPreemptiva = {
+    const vector<vector<int>> ordemPreemptiva = {
         {1, 2, 3, 1, 2}, {3, 2, 2, 1},
         {1, 2, 3, 1, 2}, {3, 2, 2, 1}
     };
     criarCargaDeTeste("gantt");
-    const std::vector<std::string> arquivos = {
+    const vector<string> arquivos = {
         "build/gantt_p1.txt", "build/gantt_p2.txt", "build/gantt_p3.txt"
     };
 
-    for (std::size_t indice = 0; indice < 4; ++indice) {
+    for (size_t indice = 0; indice < 4; ++indice) {
         Config config;
         config.politica = politicas[indice];
         ResultadoSimulacao resultado = Simulador::executarLote(arquivos, config);
         assert(resultado.ordemExecucao == ordemNaoPreemptiva[indice]);
-        assert(resultado.makespan == 9);
+        assert(resultado.makespan == 159);
         if (indice == 0 || indice == 2) {
-            assert(obterFim(resultado, 1) == 4);
-            assert(obterFim(resultado, 2) == 7);
-            assert(obterFim(resultado, 3) == 9);
+            assert(obterFim(resultado, 1) == 54);
+            assert(obterFim(resultado, 2) == 107);
+            assert(obterFim(resultado, 3) == 159);
         } else {
-            assert(obterFim(resultado, 1) == 9);
-            assert(obterFim(resultado, 2) == 5);
-            assert(obterFim(resultado, 3) == 2);
+            assert(obterFim(resultado, 1) == 159);
+            assert(obterFim(resultado, 2) == 105);
+            assert(obterFim(resultado, 3) == 52);
         }
 
         config.modo = ModoExecucao::PREEMPTIVO;
         config.quantum = 2;
         resultado = Simulador::executarLote(arquivos, config);
         assert(resultado.ordemExecucao == ordemPreemptiva[indice]);
-        assert(resultado.makespan == 9);
+        assert(resultado.makespan == 159);
         if (indice == 0 || indice == 2) {
-            assert(obterFim(resultado, 1) == 8);
-            assert(obterFim(resultado, 2) == 9);
-            assert(obterFim(resultado, 3) == 6);
+            assert(obterFim(resultado, 1) == 158);
+            assert(obterFim(resultado, 2) == 159);
+            assert(obterFim(resultado, 3) == 156);
         } else {
-            assert(obterFim(resultado, 1) == 9);
-            assert(obterFim(resultado, 2) == 5);
-            assert(obterFim(resultado, 3) == 2);
+            assert(obterFim(resultado, 1) == 159);
+            assert(obterFim(resultado, 2) == 105);
+            assert(obterFim(resultado, 3) == 52);
         }
     }
 }
@@ -305,7 +357,7 @@ void testarCustoDeContextoEntrePidsNaPreempcao() {
         {"build/ctx_p1.txt", "build/ctx_p2.txt", "build/ctx_p3.txt"}, config);
 
     assert(resultado.ciclosContexto == 4);
-    assert(resultado.makespan == 13);
+    assert(resultado.makespan == 163);
     assert(resultado.processos[0].ciclosContexto == 1);
     assert(resultado.processos[1].ciclosContexto == 2);
     assert(resultado.processos[2].ciclosContexto == 1);
@@ -323,9 +375,9 @@ void testarSemCustoAoRetomarMesmoPid() {
          "build/sem_ctx_mesmo_pid_p2.txt",
          "build/sem_ctx_mesmo_pid_p3.txt"}, config);
 
-    assert((resultado.ordemExecucao == std::vector<int>{3, 2, 2, 1}));
+    assert((resultado.ordemExecucao == vector<int>{3, 2, 2, 1}));
     assert(resultado.ciclosContexto == 2);
-    assert(resultado.makespan == 11);
+    assert(resultado.makespan == 161);
 }
 
 void testarIntegracaoSJN() {
@@ -337,7 +389,7 @@ void testarIntegracaoSJN() {
     ResultadoSimulacao resultado = Simulador::executarLote(
         {"build/sjn_longo.txt", "build/sjn_curto.txt", "build/sjn_medio.txt"},
         config);
-    assert((resultado.ordemExecucao == std::vector<int>{2, 3, 1}));
+    assert((resultado.ordemExecucao == vector<int>{2, 3, 1}));
 }
 
 void testarIntegracaoPrioridade() {
@@ -349,7 +401,7 @@ void testarIntegracaoPrioridade() {
     ResultadoSimulacao resultado = Simulador::executarLote(
         {"build/prioridade_baixa.txt", "build/prioridade_alta_1.txt",
          "build/prioridade_alta_2.txt"}, config);
-    assert((resultado.ordemExecucao == std::vector<int>{2, 3, 1}));
+    assert((resultado.ordemExecucao == vector<int>{2, 3, 1}));
 }
 
 int main() {
@@ -360,12 +412,14 @@ int main() {
     testarCustoDeContextoMulticore();
     testarDesempateDeterministicoPorNucleo();
     testarContencaoBarramentoEArbitragemCircular();
+    testarIntegracaoPaginadaComPoucosFrames();
+    testarIntegracaoMulticorePaginadaComPoucosFrames();
     testarIntegracaoSJN();
     testarIntegracaoPrioridade();
     testarGanttsDasPoliticas();
     testarContextoEQuantumNaFronteiraDaInstrucao();
     testarCustoDeContextoEntrePidsNaPreempcao();
     testarSemCustoAoRetomarMesmoPid();
-    std::cout << "Todos os testes do Simulador passaram!\n";
+    cout << "Todos os testes do Simulador passaram!\n";
     return 0;
 }

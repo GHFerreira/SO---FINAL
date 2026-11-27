@@ -5,10 +5,12 @@
 #include <utility>
 #include <vector>
 
-bool analisar(const std::vector<std::string>& argumentos, Config& config,
-              std::vector<std::string>& jobs, std::string& erro) {
-    std::vector<char*> ponteiros;
-    for (const std::string& argumento : argumentos) {
+using namespace std;
+
+bool analisar(const vector<string>& argumentos, Config& config,
+              vector<string>& jobs, string& erro) {
+    vector<char*> ponteiros;
+    for (const string& argumento : argumentos) {
         ponteiros.push_back(const_cast<char*>(argumento.c_str()));
     }
     return Config::analisarArgumentos(static_cast<int>(ponteiros.size()),
@@ -30,9 +32,9 @@ void testarValoresPadrao() {
 
 void testarLeituraArgumentos() {
     Config config;
-    std::vector<std::string> jobs;
-    std::string erro;
-    const std::vector<std::string> argumentos = {
+    vector<string> jobs;
+    string erro;
+    const vector<string> argumentos = {
         "simulador", "--cores=1", "--policy", "fcfs", "--mode=non-preemptive",
         "--quantum", "5", "--ctx-cost=3", "--bits-offset", "4",
         "--frames=8", "--replacement", "fifo", "--bus-contention=false",
@@ -49,16 +51,16 @@ void testarLeituraArgumentos() {
 
 void testarValoresInvalidos() {
     Config config;
-    std::vector<std::string> jobs;
-    std::string erro;
-    const std::vector<std::string> argumentos = {
+    vector<string> jobs;
+    string erro;
+    const vector<string> argumentos = {
         "simulador", "--bits-offset", "9"
     };
     assert(!analisar(argumentos, config, jobs, erro));
     assert(!erro.empty());
 
     erro.clear();
-    const std::vector<std::string> politicaInvalida = {
+    const vector<string> politicaInvalida = {
         "simulador", "--policy", "random"
     };
     assert(!analisar(politicaInvalida, config, jobs, erro));
@@ -66,9 +68,9 @@ void testarValoresInvalidos() {
 
 void testarNucleosAceitosEValidacaoFutura() {
     Config config;
-    std::vector<std::string> jobs;
-    std::string erro;
-    const std::vector<std::string> argumentos = {
+    vector<string> jobs;
+    string erro;
+    const vector<string> argumentos = {
         "simulador", "--cores", "2"
     };
     assert(analisar(argumentos, config, jobs, erro));
@@ -76,14 +78,14 @@ void testarNucleosAceitosEValidacaoFutura() {
 
     config.numeroNucleos = 0;
     assert(!config.validarExecucaoFase42(erro));
-    assert(erro.find("maior que zero") != std::string::npos);
+    assert(erro.find("maior que zero") != string::npos);
 
     config.numeroNucleos = 2;
     config.contencaoBarramento = true;
     assert(config.validarExecucaoFase42(erro));
 
     Config configCli;
-    const std::vector<std::string> argumentosComBarramento = {
+    const vector<string> argumentosComBarramento = {
         "simulador", "--cores=2", "--bus-contention"
     };
     assert(analisar(argumentosComBarramento, configCli, jobs, erro));
@@ -95,7 +97,7 @@ void testarNucleosAceitosEValidacaoFutura() {
 void testarCustoDeContextoConfiguravel() {
     Config config;
     config.custoTrocaContexto = 7;
-    std::string erro;
+    string erro;
     assert(config.validarExecucaoFase42(erro));
 }
 
@@ -109,20 +111,20 @@ void testarPoliticasAceitas() {
     for (PoliticaEscalonamento politica : politicas) {
         Config config;
         config.politica = politica;
-        std::string erro;
+        string erro;
         assert(config.validarExecucaoFase42(erro));
     }
 
-    const std::vector<std::pair<std::string, PoliticaEscalonamento>> valores = {
+    const vector<pair<string, PoliticaEscalonamento>> valores = {
         {"sjn", PoliticaEscalonamento::SJN},
         {"rr", PoliticaEscalonamento::ROUND_ROBIN},
         {"priority", PoliticaEscalonamento::PRIORIDADE}
     };
     for (const auto& valor : valores) {
         Config config;
-        std::vector<std::string> jobs;
-        std::string erro;
-        std::vector<std::string> argumentos = {
+        vector<string> jobs;
+        string erro;
+        vector<string> argumentos = {
             "simulador", "--policy", valor.first
         };
         assert(analisar(argumentos, config, jobs, erro));
@@ -132,21 +134,35 @@ void testarPoliticasAceitas() {
 
     Config config;
     config.modo = ModoExecucao::PREEMPTIVO;
-    std::string erro;
+    string erro;
     assert(config.validarExecucaoFase42(erro));
 }
 
 void testarModoPreemptivoPelaCLI() {
     Config config;
-    std::vector<std::string> jobs;
-    std::string erro;
-    const std::vector<std::string> argumentos = {
+    vector<string> jobs;
+    string erro;
+    const vector<string> argumentos = {
         "simulador", "--mode", "preemptive", "--quantum", "2"
     };
     assert(analisar(argumentos, config, jobs, erro));
     assert(config.modo == ModoExecucao::PREEMPTIVO);
     assert(config.quantum == 2);
     assert(config.validarExecucaoFase42(erro));
+}
+
+void testarConfiguracoesDePaginacao() {
+    Config config;
+    string erro;
+    config.bitsDeslocamento = 1;
+    config.quadros = 8;
+    assert(config.validarExecucaoFase42(erro));
+    config.bitsDeslocamento = 8;
+    config.quadros = 254;
+    assert(config.validarExecucaoFase42(erro));
+    config.quadros = 255;
+    assert(!config.validarExecucaoFase42(erro));
+    assert(erro.find("RAM") != string::npos);
 }
 
 int main() {
@@ -157,6 +173,7 @@ int main() {
     testarCustoDeContextoConfiguravel();
     testarPoliticasAceitas();
     testarModoPreemptivoPelaCLI();
-    std::cout << "Todos os testes de Config passaram!\n";
+    testarConfiguracoesDePaginacao();
+    cout << "Todos os testes de Config passaram!\n";
     return 0;
 }

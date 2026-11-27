@@ -2,6 +2,8 @@
 #include <iomanip>
 #include <stdexcept>
 
+using namespace std;
+
 // ----------------------------------------------------------------------------
 // Construtor
 // ----------------------------------------------------------------------------
@@ -14,7 +16,7 @@ RegisterBank::RegisterBank() {
 // Reinicialização de Hardware
 // ----------------------------------------------------------------------------
 void RegisterBank::reset() noexcept {
-    // std::array::fill preenche todos os 8 registradores (R0 a R7) com 0x0000
+    // array::fill preenche todos os 8 registradores (R0 a R7) com 0x0000
     R.fill(0);
     PC = 0; // Aponta PC para o endereço inicial (0x0000)
     IR = 0; // Limpa o registrador de instrução
@@ -26,9 +28,9 @@ void RegisterBank::reset() noexcept {
 uint16_t RegisterBank::read(size_t index) const {
     // Bounds Checking: Protege o simulador contra acesso fora dos limites (0 a 7)
     if (index >= NUM_REGISTERS) {
-        throw std::out_of_range("RegisterBank::read - Indice invalido (" + 
-                                std::to_string(index) + "). Permitido: 0 a " + 
-                                std::to_string(NUM_REGISTERS - 1) + ".");
+        throw out_of_range("RegisterBank::read - Indice invalido (" +
+                                to_string(index) + "). Permitido: 0 a " +
+                                to_string(NUM_REGISTERS - 1) + ".");
     }
     return R[index];
 }
@@ -39,9 +41,9 @@ uint16_t RegisterBank::read(size_t index) const {
 void RegisterBank::write(size_t index, uint16_t value) {
     // Bounds Checking: Garante que apenas registradores válidos sejam alterados
     if (index >= NUM_REGISTERS) {
-        throw std::out_of_range("RegisterBank::write - Indice invalido (" + 
-                                std::to_string(index) + "). Permitido: 0 a " + 
-                                std::to_string(NUM_REGISTERS - 1) + ".");
+        throw out_of_range("RegisterBank::write - Indice invalido (" +
+                                to_string(index) + "). Permitido: 0 a " +
+                                to_string(NUM_REGISTERS - 1) + ".");
     }
     R[index] = value;
 }
@@ -92,16 +94,16 @@ void RegisterBank::setContext(const CPUContext& ctx) noexcept {
 // ----------------------------------------------------------------------------
 // Snapshots em Vetor (Compatibilidade e Interoperabilidade)
 // ----------------------------------------------------------------------------
-std::vector<uint16_t> RegisterBank::getRegistersSnapshot() const {
-    // Converte o array interno R para um std::vector dinâmico
-    return std::vector<uint16_t>(R.begin(), R.end());
+vector<uint16_t> RegisterBank::getRegistersSnapshot() const {
+    // Converte o array interno R para um vector dinâmico
+    return vector<uint16_t>(R.begin(), R.end());
 }
 
-void RegisterBank::loadRegistersSnapshot(const std::vector<uint16_t>& snapshot) {
+void RegisterBank::loadRegistersSnapshot(const vector<uint16_t>& snapshot) {
     // Valida se o vetor recebido contém exatamente os 8 registradores da arquitetura
     if (snapshot.size() != NUM_REGISTERS) {
-        throw std::invalid_argument("RegisterBank::loadRegistersSnapshot - Snapshot deve conter exatamente " + 
-                                    std::to_string(NUM_REGISTERS) + " registradores.");
+        throw invalid_argument("RegisterBank::loadRegistersSnapshot - Snapshot deve conter exatamente " +
+                                    to_string(NUM_REGISTERS) + " registradores.");
     }
     // Copia os dados do snapshot para o array de registradores
     for (size_t i = 0; i < NUM_REGISTERS; ++i) {
@@ -112,24 +114,24 @@ void RegisterBank::loadRegistersSnapshot(const std::vector<uint16_t>& snapshot) 
 // ----------------------------------------------------------------------------
 // Impressão e Formatação de Diagnóstico (output.dat / Console)
 // ----------------------------------------------------------------------------
-void RegisterBank::imprimirEstado(std::ostream& out) const {
+void RegisterBank::imprimirEstado(ostream& out) const {
     // Salva o estado atual dos formatadores do stream (hex, dec, flags)
     // para evitar efeitos colaterais em outras partes do programa
-    std::ios state(nullptr);
+    ios state(nullptr);
     state.copyfmt(out);
 
     // Cabeçalho com registradores de controle (PC e IR) em hexadecimal de 4 dígitos
-    out << "--- ESTADO DA CPU ---" << std::endl;
-    out << "PC: 0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << PC
-        << "   IR: 0x" << std::setw(4) << IR << std::nouppercase << std::dec << std::endl;
-    
+    out << "--- ESTADO DA CPU ---" << endl;
+    out << "PC: 0x" << uppercase << setfill('0') << setw(4) << hex << PC
+        << "   IR: 0x" << setw(4) << IR << nouppercase << dec << endl;
+
     // Registradores gerais R0 a R7 dispostos em duas linhas de 4 colunas
-    out << "Registradores Gerais:" << std::endl;
+    out << "Registradores Gerais:" << endl;
     for (size_t i = 0; i < NUM_REGISTERS; i += 4) {
-        out << "R" << i << ": 0x" << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << R[i] << "  "
-            << "R" << i+1 << ": 0x" << std::setw(4) << R[i+1] << "  "
-            << "R" << i+2 << ": 0x" << std::setw(4) << R[i+2] << "  "
-            << "R" << i+3 << ": 0x" << std::setw(4) << R[i+3] << std::nouppercase << std::dec << std::endl;
+        out << "R" << i << ": 0x" << uppercase << setfill('0') << setw(4) << hex << R[i] << "  "
+            << "R" << i+1 << ": 0x" << setw(4) << R[i+1] << "  "
+            << "R" << i+2 << ": 0x" << setw(4) << R[i+2] << "  "
+            << "R" << i+3 << ": 0x" << setw(4) << R[i+3] << nouppercase << dec << endl;
     }
 
     // Restaura o formato original da stream

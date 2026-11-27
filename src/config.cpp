@@ -1,27 +1,30 @@
 #include "config.hpp"
+#include "defines.hpp"
 #include <algorithm>
 #include <cctype>
 #include <limits>
 
+using namespace std;
+
 namespace {
-std::string minusculas(std::string texto) {
-    std::transform(texto.begin(), texto.end(), texto.begin(),
+string minusculas(string texto) {
+    transform(texto.begin(), texto.end(), texto.begin(),
                    [](unsigned char caractere) {
-                       return static_cast<char>(std::tolower(caractere));
+                       return static_cast<char>(tolower(caractere));
                    });
     return texto;
 }
 
-bool converterNumero(const std::string& texto, uint32_t& valor) {
+bool converterNumero(const string& texto, uint32_t& valor) {
     if (texto.empty() || texto[0] == '-') {
         return false;
     }
 
     try {
-        std::size_t caracteresLidos = 0;
-        unsigned long long numero = std::stoull(texto, &caracteresLidos);
+        size_t caracteresLidos = 0;
+        unsigned long long numero = stoull(texto, &caracteresLidos);
         if (caracteresLidos != texto.size() ||
-            numero > std::numeric_limits<uint32_t>::max()) {
+            numero > numeric_limits<uint32_t>::max()) {
             return false;
         }
         valor = static_cast<uint32_t>(numero);
@@ -32,13 +35,13 @@ bool converterNumero(const std::string& texto, uint32_t& valor) {
 }
 
 bool obterValor(int& indice, int argc, char* argv[],
-                const std::string& valorInline, std::string& valor,
-                std::string& erro, const std::string& opcao) {
+                const string& valorInline, string& valor,
+                string& erro, const string& opcao) {
     if (!valorInline.empty()) {
         valor = valorInline;
         return true;
     }
-    if (indice + 1 >= argc || std::string(argv[indice + 1]).rfind("--", 0) == 0) {
+    if (indice + 1 >= argc || string(argv[indice + 1]).rfind("--", 0) == 0) {
         erro = "Falta valor para " + opcao + ".";
         return false;
     }
@@ -47,9 +50,9 @@ bool obterValor(int& indice, int argc, char* argv[],
 }
 
 bool lerNumero(int& indice, int argc, char* argv[],
-               const std::string& valorInline, uint32_t& destino,
-               std::string& erro, const std::string& opcao) {
-    std::string valor;
+               const string& valorInline, uint32_t& destino,
+               string& erro, const string& opcao) {
+    string valor;
     if (!obterValor(indice, argc, argv, valorInline, valor, erro, opcao)) {
         return false;
     }
@@ -60,8 +63,8 @@ bool lerNumero(int& indice, int argc, char* argv[],
     return true;
 }
 
-bool valorPositivo(uint32_t valor, std::string& erro,
-                   const std::string& opcao) {
+bool valorPositivo(uint32_t valor, string& erro,
+                   const string& opcao) {
     if (valor == 0) {
         erro = opcao + " deve ser maior que zero.";
         return false;
@@ -71,13 +74,13 @@ bool valorPositivo(uint32_t valor, std::string& erro,
 }
 
 bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
-                                std::vector<std::string>& arquivosJobs,
-                                std::string& erro) {
+                                vector<string>& arquivosJobs,
+                                string& erro) {
     arquivosJobs.clear();
     erro.clear();
 
     for (int indice = 1; indice < argc; ++indice) {
-        std::string argumento = argv[indice];
+        string argumento = argv[indice];
         if (argumento == "--help" || argumento == "-h") {
             config.ajudaSolicitada = true;
             continue;
@@ -87,10 +90,10 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
             continue;
         }
 
-        std::size_t separador = argumento.find('=');
-        std::string opcao = argumento.substr(0, separador);
-        std::string valorInline;
-        if (separador != std::string::npos) {
+        size_t separador = argumento.find('=');
+        string opcao = argumento.substr(0, separador);
+        string valorInline;
+        if (separador != string::npos) {
             valorInline = argumento.substr(separador + 1);
             if (valorInline.empty()) {
                 erro = "Falta valor para " + opcao + ".";
@@ -102,7 +105,7 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
             if (valorInline.empty()) {
                 config.contencaoBarramento = true;
             } else {
-                std::string valor = minusculas(valorInline);
+                string valor = minusculas(valorInline);
                 if (valor != "true" && valor != "false") {
                     erro = "Use true ou false para --bus-contention.";
                     return false;
@@ -135,7 +138,7 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
                            erro, opcao) ||
                 !valorPositivo(config.quadros, erro, opcao)) return false;
         } else if (opcao == "--policy") {
-            std::string valor;
+            string valor;
             if (!obterValor(indice, argc, argv, valorInline, valor, erro, opcao)) {
                 return false;
             }
@@ -153,7 +156,7 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
                 return false;
             }
         } else if (opcao == "--mode") {
-            std::string valor;
+            string valor;
             if (!obterValor(indice, argc, argv, valorInline, valor, erro, opcao)) {
                 return false;
             }
@@ -167,7 +170,7 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
                 return false;
             }
         } else if (opcao == "--replacement") {
-            std::string valor;
+            string valor;
             if (!obterValor(indice, argc, argv, valorInline, valor, erro, opcao)) {
                 return false;
             }
@@ -189,19 +192,23 @@ bool Config::analisarArgumentos(int argc, char* argv[], Config& config,
     return true;
 }
 
-bool Config::validarExecucaoFase42(std::string& erro) const {
+bool Config::validarExecucaoFase42(string& erro) const {
     erro.clear();
     if (numeroNucleos == 0) {
         erro = "--cores deve ser maior que zero.";
-    } else if (bitsDeslocamento != 4 || quadros != 8 ||
-               substituicao != PoliticaSubstituicao::FIFO) {
-        erro = "Configuracoes de paginacao serao aplicadas a partir da Fase 5.";
+    } else if (bitsDeslocamento < 1 || bitsDeslocamento > 8) {
+        erro = "--bits-offset deve estar entre 1 e 8.";
+    } else if (quadros == 0) {
+        erro = "--frames deve ser maior que zero.";
+    } else if (quadros > (TAM_RAM - OS_RESERVED_MEM) /
+                            (1u << bitsDeslocamento)) {
+        erro = "--frames excede os quadros disponiveis na RAM.";
     }
 
     return erro.empty();
 }
 
-std::string Config::textoAjuda() {
+string Config::textoAjuda() {
     return "Uso: simulador [opcoes] [arquivos de jobs...]\n"
            "  --cores N             numero de nucleos (padrao: 1)\n"
            "  --policy P            fcfs, sjn, rr ou priority (padrao: fcfs)\n"

@@ -26,6 +26,7 @@ COMMON_SRCS := \
     $(SRC_DIR)/so.cpp \
     $(SRC_DIR)/config.cpp \
     $(SRC_DIR)/escalonador.cpp \
+    $(SRC_DIR)/substituicao.cpp \
     $(SRC_DIR)/simulador.cpp \
     $(SRC_DIR)/nucleo.cpp \
     $(SRC_DIR)/memoria.cpp \
@@ -60,8 +61,10 @@ TEST_CONFIG_BIN  := $(BUILD_DIR)/test_config
 TEST_NUCLEO_BIN  := $(BUILD_DIR)/test_nucleo
 TEST_SIMULADOR_BIN := $(BUILD_DIR)/test_simulador
 TEST_ESCALONADORES_BIN := $(BUILD_DIR)/test_escalonadores
+TEST_SUBSTITUICAO_BIN := $(BUILD_DIR)/test_substituicao
+TEST_MMU_PAGINADA_BIN := $(BUILD_DIR)/test_mmu_paginada
 
-.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo test_simulador test_escalonadores clean help
+.PHONY: all run test test_ula test_registers test_cpu test_control_unit test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo test_simulador test_escalonadores test_substituicao test_mmu_paginada clean help
 
 # Target padrão
 all: $(TARGET)
@@ -108,6 +111,7 @@ $(TEST_CONTROL_BIN): $(BUILD_DIR)/$(TESTS_DIR)/test_control_unit.o \
                       $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
                       $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
                       $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/substituicao.o \
                       $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
                       $(BUILD_DIR)/$(ULA_DIR)/ula.o
 	@mkdir -p $(BUILD_DIR)
@@ -124,6 +128,7 @@ $(TEST_MEM_BIN): $(BUILD_DIR)/tests/teste_memoria.o \
 $(TEST_CPU_MEM_BIN): $(BUILD_DIR)/tests/teste_cpu_memoria.o \
                       $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
                       $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                      $(BUILD_DIR)/$(SRC_DIR)/substituicao.o \
                       $(BUILD_DIR)/$(CPU_DIR)/cpu.o \
                       $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
                       $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
@@ -134,7 +139,8 @@ $(TEST_CPU_MEM_BIN): $(BUILD_DIR)/tests/teste_cpu_memoria.o \
 
 $(TEST_MMU_BIN): $(BUILD_DIR)/tests/teste_mmu.o \
                  $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
-                 $(BUILD_DIR)/$(SRC_DIR)/mmu.o
+                 $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                 $(BUILD_DIR)/$(SRC_DIR)/substituicao.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
@@ -156,6 +162,7 @@ $(TEST_NUCLEO_BIN): $(BUILD_DIR)/tests/teste_nucleo.o \
                     $(BUILD_DIR)/$(SRC_DIR)/nucleo.o \
                     $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
                     $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                    $(BUILD_DIR)/$(SRC_DIR)/substituicao.o \
                     $(BUILD_DIR)/$(CPU_DIR)/cpu.o \
                     $(BUILD_DIR)/$(CONTROL_DIR)/control_unit.o \
                     $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
@@ -173,6 +180,18 @@ $(TEST_ESCALONADORES_BIN): $(BUILD_DIR)/tests/teste_escalonadores.o \
                            $(BUILD_DIR)/$(SRC_DIR)/pcb.o \
                            $(BUILD_DIR)/$(REG_DIR)/register_bank.o \
                            $(BUILD_DIR)/$(REG_DIR)/register_table.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+$(TEST_SUBSTITUICAO_BIN): $(BUILD_DIR)/tests/teste_substituicao.o \
+                           $(BUILD_DIR)/$(SRC_DIR)/substituicao.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+$(TEST_MMU_PAGINADA_BIN): $(BUILD_DIR)/tests/teste_mmu_paginada.o \
+                          $(BUILD_DIR)/$(SRC_DIR)/memoria.o \
+                          $(BUILD_DIR)/$(SRC_DIR)/mmu.o \
+                          $(BUILD_DIR)/$(SRC_DIR)/substituicao.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
@@ -236,8 +255,18 @@ test_escalonadores: $(TEST_ESCALONADORES_BIN)
 	@echo "--- Executando Testes dos Escalonadores ---"
 	@./$(TEST_ESCALONADORES_BIN)
 
+test_substituicao: $(TEST_SUBSTITUICAO_BIN)
+	@echo ""
+	@echo "--- Executando Testes de Substituicao de Paginas ---"
+	@./$(TEST_SUBSTITUICAO_BIN)
+
+test_mmu_paginada: $(TEST_MMU_PAGINADA_BIN)
+	@echo ""
+	@echo "--- Executando Testes da MMU Paginada ---"
+	@./$(TEST_MMU_PAGINADA_BIN)
+
 # Executa todos os testes
-test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_pcb test_config test_nucleo test_escalonadores test_simulador
+test: test_registers test_ula test_control_unit test_cpu test_memoria test_cpu_memoria test_mmu test_mmu_paginada test_pcb test_config test_nucleo test_escalonadores test_substituicao test_simulador
 	@echo ""
 	@echo "=========================================="
 	@echo "  TODOS OS TESTES PASSARAM COM SUCESSO!   "
@@ -271,5 +300,7 @@ help:
 	@echo "  make test_nucleo      - Executa os testes de estado e contadores do nucleo"
 	@echo "  make test_simulador   - Executa os testes do motor de um nucleo"
 	@echo "  make test_escalonadores - Executa os testes das politicas de escalonamento"
+	@echo "  make test_substituicao - Executa os testes FIFO e LRU"
+	@echo "  make test_mmu_paginada - Executa os testes da MMU paginada"
 	@echo "  make clean          - Remove os binários e diretório de build"
 	@echo "  make help           - Exibe esta mensagem de ajuda"

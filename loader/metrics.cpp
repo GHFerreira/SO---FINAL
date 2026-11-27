@@ -1,9 +1,11 @@
 #include "metrics.hpp"
 #include "clock_core.hpp"
 
+using namespace std;
+
 JobMetrics MetricsTracker::metricasAtuais = {};
 
-void MetricsTracker::iniciarJob(int id, const std::string& nome) {
+void MetricsTracker::iniciarJob(int id, const string& nome) {
     metricasAtuais = JobMetrics{};
     metricasAtuais.idJob = id;
     metricasAtuais.nomeJob = nome;

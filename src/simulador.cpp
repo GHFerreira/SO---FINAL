@@ -17,19 +17,21 @@
 #include <memory>
 #include <stdexcept>
 
+using namespace std;
+
 namespace {
 const uint32_t LIMITE_INSTRUCOES_POR_PROCESSO = 1000000;
 
 uint32_t calcularTamanhoLogico(const JobData& job) {
     uint32_t tamanho = static_cast<uint32_t>(job.instrucoes.size());
     for (const auto& variavel : job.variaveis) {
-        tamanho = std::max(tamanho,
+        tamanho = max(tamanho,
                            static_cast<uint32_t>(variavel.first) + 1);
     }
-    return std::max(tamanho, 1u);
+    return max(tamanho, 1u);
 }
 
-std::string politicaParaTexto(PoliticaEscalonamento politica) {
+string politicaParaTexto(PoliticaEscalonamento politica) {
     switch (politica) {
         case PoliticaEscalonamento::FCFS: return "FCFS";
         case PoliticaEscalonamento::SJN: return "SJN";
@@ -40,12 +42,12 @@ std::string politicaParaTexto(PoliticaEscalonamento politica) {
 }
 
 void imprimirResumoProcesso(const PCB& processo) {
-    std::cout << "Tempo de retorno no escalonamento: "
+    cout << "Tempo de retorno no escalonamento: "
               << processo.calcularTempoRetorno() << " ciclos\n";
-    std::cout << "Tempo de espera: " << processo.ciclosEspera << " ciclos\n";
-    std::cout << "Espera por contencao do barramento: "
+    cout << "Tempo de espera: " << processo.ciclosEspera << " ciclos\n";
+    cout << "Espera por contencao do barramento: "
               << processo.ciclosContencaoBarramento << " ciclos\n";
-    std::cout << "Trocas de contexto: " << processo.trocasContexto << "\n";
+    cout << "Trocas de contexto: " << processo.trocasContexto << "\n";
 }
 
 JobMetrics criarMetricas(const PCB& processo) {
@@ -55,11 +57,14 @@ JobMetrics criarMetricas(const PCB& processo) {
     metricas.instrucoesExecutadas = processo.instrucoesExecutadas;
     metricas.acessosRAM = processo.acessosRAM;
     metricas.acessosDisco = processo.acessosDisco;
+    metricas.hitsMemoria = processo.hitsMemoria;
+    metricas.faltasPagina = processo.faltasPagina;
+    metricas.substituicoesPagina = processo.substituicoesPagina;
     metricas.clockTotal = processo.ciclosCarga + processo.ciclosExecucao +
                           processo.ciclosStall;
     metricas.pcFinal = processo.contexto.PC;
     metricas.irFinal = processo.contexto.IR;
-    for (std::size_t indice = 0; indice < processo.contexto.R.size(); ++indice) {
+    for (size_t indice = 0; indice < processo.contexto.R.size(); ++indice) {
         metricas.registradores[indice] = processo.contexto.R[indice];
     }
     metricas.erroKernel = processo.erroKernel;
@@ -68,98 +73,104 @@ JobMetrics criarMetricas(const PCB& processo) {
 }
 
 ResultadoSimulacao Simulador::executarLote(
-    const std::vector<std::string>& arquivosJobs, const Config& config) {
+    const vector<string>& arquivosJobs, const Config& config) {
     ResultadoSimulacao resultado;
     Memoria memoria(TAM_RAM);
-    MMUBaseLimite mmu(memoria);
-    uint32_t proximoEnderecoFisico = OS_RESERVED_MEM;
+    MMUPaginada mmu(memoria, config.bitsDeslocamento, config.quadros,
+                    config.substituicao);
 
     ClockCore::resetarSimulacao();
     {
-        std::ofstream saida("output.dat", std::ios::trunc);
+        ofstream saida("output.dat", ios::trunc);
     }
 
-    std::cout << "===================================================\n"
+    cout << "===================================================\n"
               << "[SIMULADOR RISC 16-BITS] - "
               << politicaParaTexto(config.politica) << " ("
               << config.numeroNucleos << " NUCLEO(S))\n"
               << "===================================================\n";
 
-    for (std::size_t indice = 0; indice < arquivosJobs.size(); ++indice) {
+    for (size_t indice = 0; indice < arquivosJobs.size(); ++indice) {
         JobData job{};
         const int pid = static_cast<int>(indice) + 1;
         if (!JobParser::carregarArquivo(arquivosJobs[indice], job)) {
-            std::cout << "[LOTE] Job " << pid << " ignorado.\n";
+            cout << "[LOTE] Job " << pid << " ignorado.\n";
             continue;
         }
 
         const uint32_t tamanhoLogico = calcularTamanhoLogico(job);
-        const uint32_t fimRegiao = proximoEnderecoFisico + tamanhoLogico;
-        if (tamanhoLogico > std::numeric_limits<uint16_t>::max() ||
-            fimRegiao > memoria.getTamanho()) {
-            std::cout << "[LOTE] Job " << pid
-                      << " excede o espaco de memoria disponivel e foi ignorado.\n";
+        if (tamanhoLogico > numeric_limits<uint16_t>::max() ||
+            tamanhoLogico == 0) {
+            cout << "[LOTE] Job " << pid
+                      << " excede o espaco de enderecamento logico e foi ignorado.\n";
             continue;
         }
 
         job.id = pid;
-        if (!RAMLoader::carregarNaRAM(
-                job, memoria, static_cast<uint16_t>(proximoEnderecoFisico))) {
-            std::cout << "[LOTE] Falha ao carregar o job " << pid
-                      << " na RAM; job ignorado.\n";
-            continue;
+        vector<uint16_t> imagemLogica(tamanhoLogico, 0);
+        for (size_t indice = 0; indice < job.instrucoes.size(); ++indice) {
+            imagemLogica[indice] = job.instrucoes[indice];
         }
-
-        mmu.registrarProcesso(pid, static_cast<uint16_t>(proximoEnderecoFisico),
-                              static_cast<uint16_t>(tamanhoLogico));
+        for (const auto& variavel : job.variaveis) {
+            imagemLogica[variavel.first] = variavel.second;
+        }
+        mmu.registrarProcesso(pid, imagemLogica);
 
         PCB processo(pid, job.nomeArquivo, job.prioridade, job.burst);
         processo.estado = EstadoProcesso::PRONTO;
-        processo.enderecoBase = static_cast<uint16_t>(proximoEnderecoFisico);
+        processo.enderecoBase = 0;
         processo.tamanhoMemoria = static_cast<uint16_t>(tamanhoLogico);
         processo.acessosDisco = 1;
         processo.ciclosCarga = 50;
         resultado.processos.push_back(processo);
-        proximoEnderecoFisico = fimRegiao;
 
         ClockCore::tickDisco(1);
-        std::cout << "Job " << pid
+        cout << "Job " << pid
                   << " carregado na RAM para a fila de prontos.\n";
     }
 
     resultado.ciclosPreparacao = ClockCore::getCycles();
-    std::unique_ptr<Escalonador> escalonador =
+    unique_ptr<Escalonador> escalonador =
         criarEscalonador(config.politica);
-    std::vector<std::size_t> filaProntos;
-    for (std::size_t indice = 0; indice < resultado.processos.size(); ++indice) {
+    vector<size_t> filaProntos;
+    for (size_t indice = 0; indice < resultado.processos.size(); ++indice) {
         filaProntos.push_back(indice);
     }
     enum class EventoNucleo { OCIOSO, PRONTO_PARA_PASSO, PASSO, CONTEXTO };
     struct ExecucaoNucleo {
-        std::unique_ptr<Nucleo> nucleo;
+        unique_ptr<Nucleo> nucleo;
         EventoNucleo evento = EventoNucleo::OCIOSO;
-        std::size_t processo = 0;
+        size_t processo = 0;
         uint64_t terminaEm = 0;
         uint32_t ciclosQuantum = 0;
         uint32_t acessosBarramentoRestantes = 0;
         uint32_t ciclosStallPosteriores = 0;
         int ultimoPid = -1;
         bool houveErro = false;
-        std::string mensagemErro;
+        bool passoTeveFaltaPagina = false;
+        string mensagemErro;
     };
-    std::vector<ExecucaoNucleo> nucleos(config.numeroNucleos);
-    for (std::size_t indice = 0; indice < nucleos.size(); ++indice) {
-        nucleos[indice].nucleo = std::make_unique<Nucleo>(
+    vector<ExecucaoNucleo> nucleos(config.numeroNucleos);
+    for (size_t indice = 0; indice < nucleos.size(); ++indice) {
+        nucleos[indice].nucleo = make_unique<Nucleo>(
             static_cast<int>(indice), mmu);
     }
 
     uint64_t tempoAtual = 0;
-    std::size_t proximoNucleoBarramento = 0;
-    std::size_t processosConcluidos = 0;
-    const std::size_t quantidadeProcessos = resultado.processos.size();
+    size_t proximoNucleoBarramento = 0;
+    int nucleoDonoFaltaPagina = -1;
+    size_t processosConcluidos = 0;
+    const size_t quantidadeProcessos = resultado.processos.size();
 
     auto finalizarProcesso = [&](ExecucaoNucleo& execucao) {
         PCB& processo = resultado.processos[execucao.processo];
+        if (nucleoDonoFaltaPagina == execucao.nucleo->getIdentificador()) {
+            nucleoDonoFaltaPagina = -1;
+        }
+        const EstatisticasMMU estatisticas = mmu.obterEstatisticas(processo.pid);
+        processo.hitsMemoria = estatisticas.hits;
+        processo.faltasPagina = estatisticas.faltasPagina;
+        processo.substituicoesPagina = estatisticas.substituicoesPagina;
         processo.contexto = execucao.nucleo->salvarContexto();
         processo.halt = execucao.nucleo->processoFinalizado();
         processo.estado = execucao.houveErro
@@ -174,13 +185,13 @@ ResultadoSimulacao Simulador::executarLote(
                                     : 0;
         if (execucao.houveErro) {
             processo.erroKernel = true;
-            std::cout << "[INTERRUPCAO GERADA PELO HARDWARE] PID "
+            cout << "[INTERRUPCAO GERADA PELO HARDWARE] PID "
                       << processo.pid << ": " << execucao.mensagemErro << "\n";
         }
         Reporter::exibirTerminal(criarMetricas(processo));
         Reporter::salvarOutputDat("output.dat", criarMetricas(processo));
         imprimirResumoProcesso(processo);
-        std::cout << "===================================================\n";
+        cout << "===================================================\n";
         ++processosConcluidos;
         execucao.nucleo->tornarOcioso();
         execucao.evento = EventoNucleo::OCIOSO;
@@ -191,27 +202,42 @@ ResultadoSimulacao Simulador::executarLote(
 
     auto iniciarPasso = [&](ExecucaoNucleo& execucao) {
         PCB& processo = resultado.processos[execucao.processo];
+        execucao.passoTeveFaltaPagina = false;
         try {
             if (processo.instrucoesExecutadas >=
                 LIMITE_INSTRUCOES_POR_PROCESSO) {
-                throw std::runtime_error(
+                throw runtime_error(
                     "limite de instrucoes atingido sem HALT");
             }
             ResultadoPasso passo =
                 execucao.nucleo->executarPasso(processo.pid);
+            execucao.passoTeveFaltaPagina = passo.faltaPagina;
+            if (passo.faltaPagina) {
+                const int identificadorNucleo =
+                    execucao.nucleo->getIdentificador();
+                if (nucleoDonoFaltaPagina == -1) {
+                    nucleoDonoFaltaPagina = identificadorNucleo;
+                } else if (nucleoDonoFaltaPagina != identificadorNucleo) {
+                    throw logic_error(
+                        "Mais de um nucleo solicitou a MMU durante uma falta.");
+                }
+            }
             processo.acessosRAM += passo.acessosRAM;
             processo.ciclosExecucao += passo.acessosRAM;
             execucao.ciclosQuantum += passo.acessosRAM;
             processo.ciclosStall += passo.ciclosStall;
+            if (passo.faltaPagina) {
+                ++processo.acessosDisco;
+            }
             if (passo.instrucaoExecutada) {
                 ++processo.instrucoesExecutadas;
             } else if (passo.ciclosStall == 0) {
-                throw std::runtime_error(
+                throw runtime_error(
                     "CPU nao avancou nem concluiu a instrucao");
             }
             const uint32_t duracao = passo.acessosRAM + passo.ciclosStall;
             if (duracao == 0) {
-                throw std::runtime_error("instrucao sem custo temporal");
+                throw runtime_error("instrucao sem custo temporal");
             }
             execucao.evento = EventoNucleo::PASSO;
             execucao.ciclosStallPosteriores = passo.ciclosStall;
@@ -219,12 +245,12 @@ ResultadoSimulacao Simulador::executarLote(
                 execucao.acessosBarramentoRestantes = passo.acessosRAM;
                 execucao.terminaEm = passo.acessosRAM == 0
                                          ? tempoAtual + passo.ciclosStall
-                                         : std::numeric_limits<uint64_t>::max();
+                                         : numeric_limits<uint64_t>::max();
             } else {
                 execucao.acessosBarramentoRestantes = 0;
                 execucao.terminaEm = tempoAtual + duracao;
             }
-        } catch (const std::exception& erro) {
+        } catch (const exception& erro) {
             execucao.houveErro = true;
             execucao.mensagemErro = erro.what();
             finalizarProcesso(execucao);
@@ -233,14 +259,20 @@ ResultadoSimulacao Simulador::executarLote(
 
     while (processosConcluidos < quantidadeProcessos) {
         // Despachos simultaneos seguem a ordem crescente dos nucleos.
-        for (ExecucaoNucleo& execucao : nucleos) {
+        for (size_t indiceNucleo = 0; indiceNucleo < nucleos.size();
+             ++indiceNucleo) {
+            ExecucaoNucleo& execucao = nucleos[indiceNucleo];
+            if (nucleoDonoFaltaPagina != -1 &&
+                nucleoDonoFaltaPagina != static_cast<int>(indiceNucleo)) {
+                continue;
+            }
             if (execucao.evento != EventoNucleo::OCIOSO || filaProntos.empty()) {
                 continue;
             }
-            const std::size_t indice =
+            const size_t indice =
                 escalonador->selecionarProximo(resultado.processos, filaProntos);
             filaProntos.erase(
-                std::find(filaProntos.begin(), filaProntos.end(), indice));
+                find(filaProntos.begin(), filaProntos.end(), indice));
             PCB& processo = resultado.processos[indice];
             execucao.processo = indice;
             execucao.ciclosQuantum = 0;
@@ -248,7 +280,7 @@ ResultadoSimulacao Simulador::executarLote(
             execucao.mensagemErro.clear();
             processo.estado = EstadoProcesso::EXECUTANDO;
             resultado.ordemExecucao.push_back(processo.pid);
-            std::cout << "\nDespachando PID " << processo.pid << " no nucleo "
+            cout << "\nDespachando PID " << processo.pid << " no nucleo "
                       << execucao.nucleo->getIdentificador() << ": "
                       << processo.nome << "\n";
 
@@ -272,13 +304,19 @@ ResultadoSimulacao Simulador::executarLote(
 
         // Cada nucleo inicia no maximo um passo por instante; o resultado
         // funcional do passo e conhecido agora, mas seu custo termina depois.
-        for (ExecucaoNucleo& execucao : nucleos) {
+        for (size_t indiceNucleo = 0; indiceNucleo < nucleos.size();
+             ++indiceNucleo) {
+            ExecucaoNucleo& execucao = nucleos[indiceNucleo];
+            if (nucleoDonoFaltaPagina != -1 &&
+                nucleoDonoFaltaPagina != static_cast<int>(indiceNucleo)) {
+                continue;
+            }
             if (execucao.evento == EventoNucleo::PRONTO_PARA_PASSO) {
                 iniciarPasso(execucao);
             }
         }
 
-        uint64_t proximoEvento = std::numeric_limits<uint64_t>::max();
+        uint64_t proximoEvento = numeric_limits<uint64_t>::max();
         bool haAcessoPendente = false;
         for (const ExecucaoNucleo& execucao : nucleos) {
             if (execucao.evento == EventoNucleo::PASSO &&
@@ -288,34 +326,48 @@ ResultadoSimulacao Simulador::executarLote(
             if ((execucao.evento == EventoNucleo::PASSO &&
                  execucao.acessosBarramentoRestantes == 0) ||
                 execucao.evento == EventoNucleo::CONTEXTO) {
-                proximoEvento = std::min(proximoEvento, execucao.terminaEm);
+                proximoEvento = min(proximoEvento, execucao.terminaEm);
             }
         }
         const uint64_t instanteArbitragem = tempoAtual + 1;
         if (config.contencaoBarramento && haAcessoPendente) {
-            proximoEvento = std::min(proximoEvento, instanteArbitragem);
+            proximoEvento = min(proximoEvento, instanteArbitragem);
         }
-        if (proximoEvento == std::numeric_limits<uint64_t>::max()) {
+        if (proximoEvento == numeric_limits<uint64_t>::max()) {
             if (processosConcluidos == quantidadeProcessos) {
                 break;
             }
-            throw std::logic_error(
+            throw logic_error(
                 "Simulacao sem eventos ativos e com processos pendentes.");
         }
 
         const uint64_t duracao = proximoEvento - tempoAtual;
-        if (duracao > std::numeric_limits<uint32_t>::max()) {
-            throw std::overflow_error("duracao da simulacao excedeu o limite");
+        if (duracao > numeric_limits<uint32_t>::max()) {
+            throw overflow_error("duracao da simulacao excedeu o limite");
+        }
+        if (nucleoDonoFaltaPagina != -1) {
+            for (size_t indiceNucleo = 0; indiceNucleo < nucleos.size();
+                 ++indiceNucleo) {
+                ExecucaoNucleo& execucao = nucleos[indiceNucleo];
+                if (static_cast<int>(indiceNucleo) == nucleoDonoFaltaPagina ||
+                    execucao.evento != EventoNucleo::PRONTO_PARA_PASSO) {
+                    continue;
+                }
+                PCB& processo = resultado.processos[execucao.processo];
+                processo.ciclosStall += static_cast<uint32_t>(duracao);
+                execucao.nucleo->registrarStallMMU(
+                    static_cast<uint32_t>(duracao));
+            }
         }
         ClockCore::avancarTempo(static_cast<uint32_t>(duracao));
         tempoAtual = proximoEvento;
 
         if (config.contencaoBarramento && haAcessoPendente &&
             tempoAtual == instanteArbitragem) {
-            std::size_t nucleoAtendido = nucleos.size();
-            for (std::size_t deslocamento = 0; deslocamento < nucleos.size();
+            size_t nucleoAtendido = nucleos.size();
+            for (size_t deslocamento = 0; deslocamento < nucleos.size();
                  ++deslocamento) {
-                const std::size_t indice =
+                const size_t indice =
                     (proximoNucleoBarramento + deslocamento) % nucleos.size();
                 if (nucleos[indice].evento == EventoNucleo::PASSO &&
                     nucleos[indice].acessosBarramentoRestantes > 0) {
@@ -324,11 +376,11 @@ ResultadoSimulacao Simulador::executarLote(
                 }
             }
             if (nucleoAtendido == nucleos.size()) {
-                throw std::logic_error(
+                throw logic_error(
                     "Arbitragem sem solicitacao pendente no barramento.");
             }
 
-            for (std::size_t indice = 0; indice < nucleos.size(); ++indice) {
+            for (size_t indice = 0; indice < nucleos.size(); ++indice) {
                 ExecucaoNucleo& solicitacao = nucleos[indice];
                 if (indice == nucleoAtendido ||
                     solicitacao.evento != EventoNucleo::PASSO ||
@@ -368,6 +420,11 @@ ResultadoSimulacao Simulador::executarLote(
             PCB& processo = resultado.processos[execucao.processo];
             processo.contexto = execucao.nucleo->salvarContexto();
             processo.halt = execucao.nucleo->processoFinalizado();
+            if (nucleoDonoFaltaPagina ==
+                execucao.nucleo->getIdentificador() &&
+                !execucao.passoTeveFaltaPagina) {
+                nucleoDonoFaltaPagina = -1;
+            }
             if (processo.halt) {
                 finalizarProcesso(execucao);
             } else if (config.modo == ModoExecucao::PREEMPTIVO &&
@@ -398,7 +455,7 @@ ResultadoSimulacao Simulador::executarLote(
         resultado.contadoresNucleos.push_back(execucao.nucleo->getContadores());
     }
     resultado.tempoTotal = ClockCore::getGlobalCycles();
-    std::cout << "Preparacao do lote: " << resultado.ciclosPreparacao
+    cout << "Preparacao do lote: " << resultado.ciclosPreparacao
               << " ciclos\n"
               << "Makespan do escalonamento: " << resultado.makespan
               << " ciclos\n"

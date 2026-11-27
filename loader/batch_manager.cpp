@@ -16,6 +16,8 @@
 #include <exception>
 #include <iostream>
 
+using namespace std;
+
 /**
  * BatchManager - Gerenciador do ciclo de vida em lote
  *
@@ -42,23 +44,23 @@ const uint32_t LIMITE_INSTRUCOES_POR_JOB = 1000000;
 
 } // namespace
 
-void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJobs) {
+void BatchManager::executarLote(const vector<string>& listaArquivosJobs) {
     Memoria memoria(TAM_RAM);
     MMUBaseLimite mmu(memoria);
 
-    std::cout << "===================================================" << std::endl;
-    std::cout << "[SIMULADOR RISC 16-BITS] - EXECUCAO EM LOTE" << std::endl;
-    std::cout << "===================================================" << std::endl;
+    cout << "===================================================" << endl;
+    cout << "[SIMULADOR RISC 16-BITS] - EXECUCAO EM LOTE" << endl;
+    cout << "===================================================" << endl;
 
-    for (std::size_t i = 0; i < listaArquivosJobs.size(); ++i) {
-        const std::string& caminho = listaArquivosJobs[i];
+    for (size_t i = 0; i < listaArquivosJobs.size(); ++i) {
+        const string& caminho = listaArquivosJobs[i];
         const int idJob = static_cast<int>(i) + 1;
 
         // --- 1. Leitura do job em disco (JobParser) ------------------------
         JobData job;
         if (!JobParser::carregarArquivo(caminho, job)) {
-            std::cout << "[LOTE] Falha ao ler o job " << idJob << ": " << caminho
-                      << " (job ignorado)" << std::endl;
+            cout << "[LOTE] Falha ao ler o job " << idJob << ": " << caminho
+                      << " (job ignorado)" << endl;
             continue;
         }
 
@@ -67,7 +69,7 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
             job.nomeArquivo = caminho;
         }
 
-        std::cout << "Carregando Job " << job.id << ": " << job.nomeArquivo << "..." << std::endl;
+        cout << "Carregando Job " << job.id << ": " << job.nomeArquivo << "..." << endl;
 
         // --- 2. Reset de contexto e Telemetria de Disco -------------------
         // Zera o clock do job, abre a telemetria e devolve a CPU ao estado
@@ -90,8 +92,8 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
         // --- 3. Carga das instruções e variáveis na RAM (RAMLoader) --------
         const bool cargaConcluida = RAMLoader::carregarNaRAM(job, memoria);
         if (!cargaConcluida) {
-            std::cout << "[LOTE] Falha ao carregar o job " << job.id
-                      << " na RAM (job abortado)" << std::endl;
+            cout << "[LOTE] Falha ao carregar o job " << job.id
+                      << " na RAM (job abortado)" << endl;
             MetricsTracker::marcarErroKernel();
         }
 
@@ -101,9 +103,9 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
             try {
                 while (!cpu.isHalted()) {
                     if (instrucoesDoJob >= LIMITE_INSTRUCOES_POR_JOB) {
-                        std::cout << "[LOTE] Job " << job.id
+                        cout << "[LOTE] Job " << job.id
                                   << " excedeu o limite de instrucoes sem HALT (job abortado)"
-                                  << std::endl;
+                                  << endl;
                         MetricsTracker::marcarErroKernel();
                         break;
                     }
@@ -120,13 +122,13 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
                 }
 
                 if (cpu.isHalted()) {
-                    std::cout << "Execucao finalizada (HALT encontrado no PC 0x" 
-                              << std::hex << std::uppercase << cpu.getRegisterBank().getPC() << std::dec << ")." << std::endl;
+                    cout << "Execucao finalizada (HALT encontrado no PC 0x"
+                              << hex << uppercase << cpu.getRegisterBank().getPC() << dec << ")." << endl;
                 }
-            } catch (const std::exception& e) {
+            } catch (const exception& e) {
                 // Interrupção de hardware (SEGFAULT na área do SO ou opcode inválido).
                 // Encerra somente este job e preserva as métricas coletadas até aqui.
-                std::cout << "[INTERRUPCAO GERADA PELO HARDWARE]: " << e.what() << std::endl;
+                cout << "[INTERRUPCAO GERADA PELO HARDWARE]: " << e.what() << endl;
                 MetricsTracker::marcarErroKernel();
             }
 
@@ -144,7 +146,7 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
         // A CPU modular expõe o estado pelo RegisterBank (getPC/getIR/snapshot),
         // então lemos os registradores por ele no lugar dos getters antigos.
         const RegisterBank& regBank = cpu.getRegisterBank();
-        const std::vector<uint16_t> registradores = regBank.getRegistersSnapshot();
+        const vector<uint16_t> registradores = regBank.getRegistersSnapshot();
         MetricsTracker::capturarEstadoCPU(regBank.getPC(), regBank.getIR(),
                                           registradores.data());
 
@@ -152,6 +154,6 @@ void BatchManager::executarLote(const std::vector<std::string>& listaArquivosJob
         Reporter::exibirTerminal(metricas);
         Reporter::salvarOutputDat(ARQUIVO_SAIDA, metricas);
 
-        std::cout << "===================================================" << std::endl;
+        cout << "===================================================" << endl;
     }
 }

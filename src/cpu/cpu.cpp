@@ -1,6 +1,8 @@
 #include "cpu.hpp"
 #include <iostream>
 
+using namespace std;
+
 // ----------------------------------------------------------------------------
 // Construtor e Controle Básico da CPU
 // ----------------------------------------------------------------------------
@@ -62,6 +64,6 @@ ResultadoPasso CPU::step(int pid) {
 // ----------------------------------------------------------------------------
 // Impressão do Estado da CPU
 // ----------------------------------------------------------------------------
-void CPU::imprimirEstado(std::ostream& out) const {
+void CPU::imprimirEstado(ostream& out) const {
     regBank.imprimirEstado(out);
 }

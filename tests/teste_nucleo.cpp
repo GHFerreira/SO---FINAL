@@ -4,6 +4,8 @@
 #include <cassert>
 #include <iostream>
 
+using namespace std;
+
 class MMUComFaltaInicial : public MMU {
 private:
     Memoria& memoria;
@@ -70,6 +72,10 @@ void testarEstadosECiclos() {
     assert(nucleo.getContadores().ciclosStall == 8);
     assert(nucleo.getContadores().ciclosContencaoBarramento == 2);
 
+    nucleo.registrarStallMMU(4);
+    assert(nucleo.getContadores().ciclosStall == 12);
+    assert(nucleo.getContadores().ciclosContencaoBarramento == 2);
+
     nucleo.registrarOciosidade(4);
     assert(nucleo.getContadores().ciclosOciosos == 4);
 }
@@ -96,6 +102,6 @@ void testarCapturaERestauracaoContexto() {
 int main() {
     testarEstadosECiclos();
     testarCapturaERestauracaoContexto();
-    std::cout << "Todos os testes de Nucleo passaram!\n";
+    cout << "Todos os testes de Nucleo passaram!\n";
     return 0;
 }

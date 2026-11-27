@@ -27,6 +27,9 @@ struct JobMetrics {
     uint32_t instrucoesExecutadas;
     uint32_t acessosRAM;
     uint32_t acessosDisco;
+    uint32_t hitsMemoria = 0;
+    uint32_t faltasPagina = 0;
+    uint32_t substituicoesPagina = 0;
     uint32_t clockTotal;
     uint16_t pcFinal;
     uint16_t irFinal;

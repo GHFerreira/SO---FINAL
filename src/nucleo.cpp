@@ -1,5 +1,7 @@
 #include "nucleo.hpp"
 
+using namespace std;
+
 Nucleo::Nucleo(int identificador, MMU& mmu)
     : identificador(identificador), cpu(mmu), estado(EstadoNucleo::OCIOSO) {}
 
@@ -30,6 +32,10 @@ void Nucleo::iniciarTrocaContexto(uint32_t ciclos) {
 void Nucleo::registrarStallBarramento(uint32_t ciclos) {
     contadores.ciclosStall += ciclos;
     contadores.ciclosContencaoBarramento += ciclos;
+}
+
+void Nucleo::registrarStallMMU(uint32_t ciclos) {
+    contadores.ciclosStall += ciclos;
 }
 
 void Nucleo::retomarExecucao() {
@@ -76,7 +82,7 @@ const ContadoresNucleo& Nucleo::getContadores() const {
     return contadores;
 }
 
-std::string Nucleo::estadoParaTexto(EstadoNucleo estado) {
+string Nucleo::estadoParaTexto(EstadoNucleo estado) {
     switch (estado) {
         case EstadoNucleo::OCIOSO:
             return "OCIOSO";

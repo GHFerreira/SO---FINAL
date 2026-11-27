@@ -2,6 +2,8 @@
 #include <limits>
 #include <iostream>
 
+using namespace std;
+
 void ULA::calculate() {
     // Reset de flags e resultado antes de cada cálculo
     overflow = false;
@@ -14,8 +16,8 @@ void ULA::calculate() {
 
     // Lambda para checagem de overflow (verifica se cabe no intervalo [-32768, 32767])
     auto fits_in_i16 = [](int32_t x) -> bool {
-        return (x <= std::numeric_limits<int16_t>::max()) &&
-               (x >= std::numeric_limits<int16_t>::min());
+        return (x <= numeric_limits<int16_t>::max()) &&
+               (x >= numeric_limits<int16_t>::min());
     };
 
     switch (op) {

@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <string>
 
+using namespace std;
+
 namespace {
 struct FaltaPagina {};
 }
@@ -85,9 +87,9 @@ void ControlUnit::dispararULA(RegisterBank &regBank, ULA &ula, uint16_t opcode,
 
   // 2. ...e comanda a ULA para realizar o cálculo (a UC não calcula nada).
   if (!ula.executeOpcode(opcode, val1, val2)) {
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlUnit::dispararULA - Opcode invalido ou nao computacional: " +
-        std::to_string(opcode));
+        to_string(opcode));
   }
 
   // 3. A UC grava o resultado devolvido pela ULA de volta no destino.
@@ -146,9 +148,9 @@ void ControlUnit::executar(const InstrucaoDecodificada &instr,
     break;
 
   default:
-    throw std::runtime_error(
+    throw runtime_error(
         "ControlUnit::execute - Opcode Invalido detectado: 0x" +
-        std::to_string(instr.opcode));
+        to_string(instr.opcode));
   }
 }
 

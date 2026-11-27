@@ -6,23 +6,25 @@
 #include <sstream>
 #include <string>
 
+using namespace std;
+
 int main() {
     Memoria memoria(TAM_RAM);
     MMUBaseLimite mmu(memoria);
     mmu.registrarProcesso(1, OS_RESERVED_MEM,
                           static_cast<uint16_t>(TAM_RAM - OS_RESERVED_MEM));
 
-    std::ifstream arquivo("src/cpu/jobs/teste_condicional_beq.txt");
+    ifstream arquivo("src/cpu/jobs/teste_condicional_beq.txt");
     if (!arquivo.is_open()) {
-        std::cerr << "Erro ao abrir o programa de teste.\n";
+        cerr << "Erro ao abrir o programa de teste.\n";
         return 1;
     }
 
-    std::string linha;
+    string linha;
     uint16_t endereco = 0;
-    while (std::getline(arquivo, linha)) {
+    while (getline(arquivo, linha)) {
         if (linha.empty()) continue;
-        uint16_t dado = static_cast<uint16_t>(std::stoul(linha, nullptr, 16));
+        uint16_t dado = static_cast<uint16_t>(stoul(linha, nullptr, 16));
         memoria.escreverKernel(OS_RESERVED_MEM + endereco, dado);
         endereco++;
     }
@@ -35,7 +37,7 @@ int main() {
     }
 
     cpu.imprimirEstado();
-    std::cout << "Instrucoes executadas: " << instrucoes << '\n';
-    std::cout << "Acessos a RAM: " << memoria.getTotalAcessos() << '\n';
+    cout << "Instrucoes executadas: " << instrucoes << '\n';
+    cout << "Acessos a RAM: " << memoria.getTotalAcessos() << '\n';
     return 0;
 }

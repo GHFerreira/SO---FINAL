@@ -8,12 +8,14 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace std;
+
 #define TEST_ASSERT(condition)                                                 \
   do {                                                                         \
     if (!(condition)) {                                                        \
-      std::cerr << "[FALHA] " << __FILE__ << ":" << __LINE__                   \
-                << " Assercao falhou: " #condition << std::endl;               \
-      std::exit(1);                                                            \
+      cerr << "[FALHA] " << __FILE__ << ":" << __LINE__                   \
+                << " Assercao falhou: " #condition << endl;               \
+      exit(1);                                                            \
     }                                                                          \
   } while (0)
 
@@ -93,7 +95,7 @@ void testOpcodeInvalido() {
   bool lancou = false;
   try {
     ambiente.uc.step(1, ambiente.registradores, ambiente.ula);
-  } catch (const std::runtime_error &) {
+  } catch (const runtime_error &) {
     lancou = true;
   }
   TEST_ASSERT(lancou);
@@ -105,6 +107,6 @@ int main() {
   testCicloCompletoSoma();
   testDesviosLogicos();
   testOpcodeInvalido();
-  std::cout << "Todos os testes da unidade de controle passaram!\n";
+  cout << "Todos os testes da unidade de controle passaram!\n";
   return 0;
 }

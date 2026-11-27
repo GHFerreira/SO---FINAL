@@ -1,12 +1,14 @@
 #include "pcb.hpp"
 
+using namespace std;
+
 PCB::PCB() {
     contexto.R.fill(0);
     contexto.PC = 0;
     contexto.IR = 0;
 }
 
-PCB::PCB(int idProcesso, const std::string& nomeProcesso, int prio, uint32_t burst)
+PCB::PCB(int idProcesso, const string& nomeProcesso, int prio, uint32_t burst)
     : pid(idProcesso),
       nome(nomeProcesso),
       prioridade(prio),
@@ -56,7 +58,7 @@ uint32_t PCB::calcularTempoRetorno() const {
     return cicloFim - tempoChegada;
 }
 
-std::string PCB::estadoParaTexto(EstadoProcesso est) {
+string PCB::estadoParaTexto(EstadoProcesso est) {
     switch (est) {
         case EstadoProcesso::NOVO:
             return "NOVO";

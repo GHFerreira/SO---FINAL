@@ -5,9 +5,11 @@
 #include <iostream>
 #include <vector>
 
+using namespace std;
+
 void carregarPrograma(Memoria& memoria, uint16_t baseFisica,
                       uint16_t valorA, uint16_t valorB) {
-    const std::vector<uint16_t> programa = {
+    const vector<uint16_t> programa = {
         0x100A, 0x110B, 0x2201, 0x320C, 0xF000
     };
     for (size_t i = 0; i < programa.size(); ++i) {
@@ -39,6 +41,6 @@ void testarSoma(uint16_t valorA, uint16_t valorB) {
 int main() {
     testarSoma(5, 7);
     testarSoma(100, 23);
-    std::cout << "Teste de integracao CPU-memoria passou!\n";
+    cout << "Teste de integracao CPU-memoria passou!\n";
     return 0;
 }

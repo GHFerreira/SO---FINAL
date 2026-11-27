@@ -7,13 +7,15 @@
 #include "../registers/register_bank.hpp"
 #include "../registers/register_table.hpp"
 
+using namespace std;
+
 // Macro de teste resiliente e independente de NDEBUG
 #define TEST_ASSERT(condition) \
     do { \
         if (!(condition)) { \
-            std::cerr << "[FALHA] " << __FILE__ << ":" << __LINE__ \
-                      << " Assercao falhou: " #condition << std::endl; \
-            std::exit(1); \
+            cerr << "[FALHA] " << __FILE__ << ":" << __LINE__ \
+                      << " Assercao falhou: " #condition << endl; \
+            exit(1); \
         } \
     } while (0)
 
@@ -28,14 +30,14 @@
             caught = false; \
         } \
         if (!caught) { \
-            std::cerr << "[FALHA] " << __FILE__ << ":" << __LINE__ \
-                      << " Esperava excecao " #exceptionType " em: " #expression << std::endl; \
-            std::exit(1); \
+            cerr << "[FALHA] " << __FILE__ << ":" << __LINE__ \
+                      << " Esperava excecao " #exceptionType " em: " #expression << endl; \
+            exit(1); \
         } \
     } while (0)
 
 void testRegisterBank() {
-    std::cout << "[TEST] Executando testes rigorosos do RegisterBank...\n";
+    cout << "[TEST] Executando testes rigorosos do RegisterBank...\n";
     RegisterBank bank;
 
     // 1. Estado inicial zerado
@@ -82,27 +84,27 @@ void testRegisterBank() {
     TEST_ASSERT(bank.getIR() == 0x2201);
 
     // 5. Teste de Excecoes e Bounds Checking
-    TEST_THROWS(bank.read(8), std::out_of_range);
-    TEST_THROWS(bank.read(255), std::out_of_range);
-    TEST_THROWS(bank.read(256), std::out_of_range);
-    TEST_THROWS(bank.write(8, 0x1111), std::out_of_range);
-    TEST_THROWS(bank.write(1000, 0x1111), std::out_of_range);
-    TEST_THROWS(bank.loadRegistersSnapshot(std::vector<uint16_t>{1, 2, 3}), std::invalid_argument);
+    TEST_THROWS(bank.read(8), out_of_range);
+    TEST_THROWS(bank.read(255), out_of_range);
+    TEST_THROWS(bank.read(256), out_of_range);
+    TEST_THROWS(bank.write(8, 0x1111), out_of_range);
+    TEST_THROWS(bank.write(1000, 0x1111), out_of_range);
+    TEST_THROWS(bank.loadRegistersSnapshot(vector<uint16_t>{1, 2, 3}), invalid_argument);
 
     // 6. Teste de Saída Formatada em Stream (output.dat / stringstream)
-    std::ostringstream oss;
+    ostringstream oss;
     bank.imprimirEstado(oss);
-    std::string out = oss.str();
-    TEST_ASSERT(out.find("PC: 0x0101") != std::string::npos);
-    TEST_ASSERT(out.find("IR: 0x2201") != std::string::npos);
-    TEST_ASSERT(out.find("R0: 0x0005") != std::string::npos);
-    TEST_ASSERT(out.find("R7: 0xFFFF") != std::string::npos);
+    string out = oss.str();
+    TEST_ASSERT(out.find("PC: 0x0101") != string::npos);
+    TEST_ASSERT(out.find("IR: 0x2201") != string::npos);
+    TEST_ASSERT(out.find("R0: 0x0005") != string::npos);
+    TEST_ASSERT(out.find("R7: 0xFFFF") != string::npos);
 
-    std::cout << "[PASS] RegisterBank validado com sucesso!\n\n";
+    cout << "[PASS] RegisterBank validado com sucesso!\n\n";
 }
 
 void testRegisterTable() {
-    std::cout << "[TEST] Executando testes rigorosos do RegisterTable...\n";
+    cout << "[TEST] Executando testes rigorosos do RegisterTable...\n";
     RegisterTable table;
 
     // 1. Mapeamento Canonico e Aliases
@@ -142,22 +144,22 @@ void testRegisterTable() {
     TEST_ASSERT(!table.isGeneralPurpose(RegisterTable::SPECIAL_REG_PC));
 
     // 5. Excecoes
-    TEST_THROWS(table.getIndex("INVALID_REG"), std::invalid_argument);
-    TEST_THROWS(table.getIndex(""), std::invalid_argument);
-    TEST_THROWS(table.getName(8), std::out_of_range);
-    TEST_THROWS(table.getName(255), std::out_of_range);
+    TEST_THROWS(table.getIndex("INVALID_REG"), invalid_argument);
+    TEST_THROWS(table.getIndex(""), invalid_argument);
+    TEST_THROWS(table.getName(8), out_of_range);
+    TEST_THROWS(table.getName(255), out_of_range);
 
-    std::cout << "[PASS] RegisterTable validado com sucesso!\n\n";
+    cout << "[PASS] RegisterTable validado com sucesso!\n\n";
 }
 
 int main() {
-    std::cout << "==================================================\n";
-    std::cout << "  SUITE RIGOROSA: AUDITORIA DO MODULO REGISTRADORES\n";
-    std::cout << "==================================================\n\n";
+    cout << "==================================================\n";
+    cout << "  SUITE RIGOROSA: AUDITORIA DO MODULO REGISTRADORES\n";
+    cout << "==================================================\n\n";
 
     testRegisterBank();
     testRegisterTable();
 
-    std::cout << "TODOS OS TESTES DE AUDITORIA PASSARAM COM EXCELENCIA!\n";
+    cout << "TODOS OS TESTES DE AUDITORIA PASSARAM COM EXCELENCIA!\n";
     return 0;
 }

@@ -4,12 +4,14 @@
 #include <iomanip>
 #include <exception>
 
+using namespace std;
+
 SistemaOperacional::SistemaOperacional()
     : memoria(TAM_RAM), mmu(memoria), cpu(mmu) {}
 
 
-void SistemaOperacional::carregarJob(const std::vector<uint16_t>& jobInstrucoes,
-                                     const std::vector<uint16_t>& dadosIniciais) {
+void SistemaOperacional::carregarJob(const vector<uint16_t>& jobInstrucoes,
+                                     const vector<uint16_t>& dadosIniciais) {
     const uint16_t baseMemoria = OS_RESERVED_MEM;
     mmu.limparProcessos();
     mmu.registrarProcesso(1, baseMemoria,
@@ -31,13 +33,13 @@ void SistemaOperacional::carregarJob(const std::vector<uint16_t>& jobInstrucoes,
 }
 
 void SistemaOperacional::executarJob(int idJob,
-                                     const std::string& nomeJob,
-                                     const std::vector<uint16_t>& inst,
-                                     const std::vector<uint16_t>& dados) {
-    std::cout << "\n===================================================" << std::endl;
-    std::cout << "[SIMULADOR RISC 16-BITS] - EXECUCAO EM LOTE" << std::endl;
-    std::cout << "===================================================" << std::endl;
-    std::cout << "Carregando Job " << idJob << ": " << nomeJob << "..." << std::endl;
+                                     const string& nomeJob,
+                                     const vector<uint16_t>& inst,
+                                     const vector<uint16_t>& dados) {
+    cout << "\n===================================================" << endl;
+    cout << "[SIMULADOR RISC 16-BITS] - EXECUCAO EM LOTE" << endl;
+    cout << "===================================================" << endl;
+    cout << "Carregando Job " << idJob << ": " << nomeJob << "..." << endl;
 
     ClockCore::reset();
     cpu.reset();
@@ -68,10 +70,10 @@ void SistemaOperacional::executarJob(int idJob,
                 ClockCore::adicionarCiclos(resultado.ciclosStall);
             }
         }
-        std::cout << "Execucao finalizada (HALT encontrado)." << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "\n[ERRO CRITICO] " << e.what() << std::endl;
-        std::cout << "O Job " << idJob << " foi abortado pelo Sistema Operacional." << std::endl;
+        cout << "Execucao finalizada (HALT encontrado)." << endl;
+    } catch (const exception& e) {
+        cout << "\n[ERRO CRITICO] " << e.what() << endl;
+        cout << "O Job " << idJob << " foi abortado pelo Sistema Operacional." << endl;
     }
     contabilizarAcessosRAM();
 
@@ -79,10 +81,10 @@ void SistemaOperacional::executarJob(int idJob,
     cpu.imprimirEstado();
 
     // Exibe as estatísticas do job
-    std::cout << "--- ESTATISTICAS DO JOB ---" << std::endl;
-    std::cout << "Instrucoes Executadas: " << instrucoesExecutadas << std::endl;
-    std::cout << "Acessos a Memoria (RAM): " << memoria.getTotalAcessos() << std::endl;
-    std::cout << "Acessos ao Disco (I/O): " << acessosDisco << std::endl;
-    std::cout << "CLOCK TOTAL DESTE JOB: " << ClockCore::getCycles() << " ciclos" << std::endl;
-    std::cout << "===================================================\n" << std::endl;
+    cout << "--- ESTATISTICAS DO JOB ---" << endl;
+    cout << "Instrucoes Executadas: " << instrucoesExecutadas << endl;
+    cout << "Acessos a Memoria (RAM): " << memoria.getTotalAcessos() << endl;
+    cout << "Acessos ao Disco (I/O): " << acessosDisco << endl;
+    cout << "CLOCK TOTAL DESTE JOB: " << ClockCore::getCycles() << " ciclos" << endl;
+    cout << "===================================================\n" << endl;
 }

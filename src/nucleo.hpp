@@ -35,6 +35,7 @@ public:
     ResultadoPasso executarPasso(int pid);
     void iniciarTrocaContexto(uint32_t ciclos);
     void registrarStallBarramento(uint32_t ciclos);
+    void registrarStallMMU(uint32_t ciclos);
     void retomarExecucao();
     void registrarOciosidade(uint32_t ciclos);
     void tornarOcioso();
